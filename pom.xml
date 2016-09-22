@@ -65,6 +65,7 @@
         <jodatime.version>2.9.2</jodatime.version>
         <freemarker.version>2.3.23</freemarker.version>
         <logback.version>1.1.2</logback.version>
+        <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
     </properties>
 
     <distributionManagement>
@@ -337,6 +338,60 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
             </plugin>
+
+
+            <!--
+            Maven Shade plugin is used here to rename dependencies (Jackson) to create a "private copy" for DataVec to use.
+            This stops dependency clashes with other libraries that use Jackson (Spark, Dropwizard, etc).
+            More generally, it allows users to add their own versions of these dependencies without impacting DataVec.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>${maven-shade-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>reference.conf</resource>
+                                </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+
+                <configuration>
+                    <!-- shadedArtifactAttached - False: main jar is shaded. True: main jar is unmodified, and separate '-shaded' jar also built -->
+                    <shadedArtifactAttached>false</shadedArtifactAttached>
+                    <shadeTestJar>true</shadeTestJar>
+                    <createDependencyReducedPom>false</createDependencyReducedPom>
+
+                    <!-- Specify the dependencies to include in the DL4J jar files (for install, package etc) -->
+                    <artifactSet>
+                        <includes>
+                            <include>com.fasterxml.jackson:*</include>
+                            <include>com.fasterxml.jackson.*:*</include>
+                        </includes>
+                    </artifactSet>
+
+                    <!-- Specify for which dependencies renaming should occur, and the new package names -->
+                    <relocations>
+                        <relocation>
+                            <pattern>com.fasterxml.jackson</pattern>
+                            <shadedPattern>org.datavec.shade.jackson</shadedPattern>
+                        </relocation>
+                    </relocations>
+                </configuration>
+            </plugin>
+
         </plugins>
 
     </build>
