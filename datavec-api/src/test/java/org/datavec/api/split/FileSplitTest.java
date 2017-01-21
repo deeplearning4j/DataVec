@@ -16,83 +16,64 @@
 
 package org.datavec.api.split;
 
-import org.junit.rules.TemporaryFolder;
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
+import org.junit.Before;
+import org.junit.Test;
 
-import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Random;
 
+import static org.junit.Assert.assertEquals;
 
-import org.junit.Rule;
-
-
-/**
- * Created by nyghtowl on 11/8/15.
- */
 public class FileSplitTest {
+    private Path file;
+    private Path file1;
+    private Path file3;
+    private Path newPath;
+    private String[] allForms = {"jpg", "jpeg", "JPG", "JPEG"};
+    private static String localPath = "/";
+    private static String testPath = localPath + "test/";
 
-    protected File file, file1, file2, file3, file4, file5, file6, newPath;
-    protected String[] allForms = {"jpg", "jpeg", "JPG", "JPEG"};
-    private static String localPath = System.getProperty("java.io.tmpdir") + File.separator;
-    private static String testPath = localPath + "test" + File.separator;
+    @Before
+    public void doBefore() throws IOException {
+        FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+        file = Files.createFile(fs.getPath(localPath + "myfile.txt"));
 
-    // These cannot run on TravisCI - uncomment when checking locally
+        newPath = fs.getPath(testPath);
+        Files.createDirectory(newPath);
 
-    @Rule
-    public TemporaryFolder mainFolder = new TemporaryFolder();
+        file1 = Files.createFile(fs.getPath(testPath, "myfile_1.jpg"));
+        Files.createFile(fs.getPath(testPath, "myfile_2.txt"));
+        file3 = Files.createFile(fs.getPath(testPath, "myfile_3.jpg"));
+        Files.createFile(fs.getPath(testPath, "treehouse_4.csv"));
+        Files.createFile(fs.getPath(testPath, "treehouse_5.csv"));
+        Files.createFile(fs.getPath(testPath, "treehouse_6.jpg"));
+    }
 
-//
-//    @Before
-//    public void doBefore() throws IOException {
-//        file = mainFolder.newFile("myfile.txt");
-//
-//        newPath = new File(testPath);
-//
-//        newPath.mkdir();
-//
-//        file1 = File.createTempFile("myfile_1", ".jpg", newPath);
-//        file2 = File.createTempFile("myfile_2", ".txt", newPath);
-//        file3 = File.createTempFile("myfile_3", ".jpg", newPath);
-//        file4 = File.createTempFile("treehouse_4", ".csv", newPath);
-//        file5 = File.createTempFile("treehouse_5", ".csv", newPath);
-//        file6 = File.createTempFile("treehouse_6", ".jpg", newPath);
-//
-//    }
-//
-//    @Test
-//    public void testInitializeLoadSingleFile(){
-//        InputSplit split = new FileSplit(file, allForms);
-//        assertEquals(split.locations()[0], file.toURI());
-//
-//    }
-//
-//    @Test
-//    public void testInitializeLoadMulFiles() throws IOException{
-//        InputSplit split = new FileSplit(newPath, allForms, true);
-//        assertEquals(3, split.locations().length);
-//        assertEquals(file1.toURI(), split.locations()[0]);
-//        assertEquals(file3.toURI(), split.locations()[1]);
-//    }
-//
-//    @Test
-//    public void testInitializeMulFilesShuffle() throws IOException{
-//        InputSplit split = new FileSplit(newPath, new Random(123));
-//        InputSplit split2 = new FileSplit(newPath, new Random(123));
-//        assertEquals(6, split.locations().length);
-//        assertEquals(6, split2.locations().length);
-//        assertEquals(split.locations()[3], split2.locations()[3]);
-//    }
-//
-//    @After
-//    public void doAfter(){
-//        mainFolder.delete();
-//        file.delete();
-//        file1.delete();
-//        file2.delete();
-//        file3.delete();
-//        file4.delete();
-//        file5.delete();
-//        file6.delete();
-//        newPath.delete();
-//
-//    }
+    @Test
+    public void testInitializeLoadSingleFile() {
+        InputSplit split = new FileSplit(file, allForms);
+        assertEquals(split.locations()[0], file.toUri());
+    }
 
+    @Test
+    public void testInitializeLoadMulFiles() throws IOException {
+        InputSplit split = new FileSplit(newPath, allForms, true);
+        assertEquals(3, split.locations().length);
+        assertEquals(file1.toUri(), split.locations()[0]);
+        assertEquals(file3.toUri(), split.locations()[1]);
+    }
+
+    @Test
+    public void testInitializeMulFilesShuffle() throws IOException {
+        InputSplit split = new FileSplit(newPath, new Random(123));
+        InputSplit split2 = new FileSplit(newPath, new Random(123));
+        assertEquals(6, split.locations().length);
+        assertEquals(6, split2.locations().length);
+        assertEquals(split.locations()[3], split2.locations()[3]);
+    }
 }
