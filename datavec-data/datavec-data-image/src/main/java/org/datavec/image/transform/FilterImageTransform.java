@@ -15,10 +15,15 @@
  */
 package org.datavec.image.transform;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
+import org.bytedeco.javacpp.opencv_core;
 import org.bytedeco.javacv.FFmpegFrameFilter;
+import org.bytedeco.javacv.FrameConverter;
 import org.bytedeco.javacv.FrameFilter;
+import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.datavec.image.data.ImageWritable;
 
 import static org.bytedeco.javacpp.avutil.*;
@@ -32,7 +37,12 @@ import static org.bytedeco.javacpp.avutil.*;
  */
 public class FilterImageTransform extends BaseImageTransform {
 
-    FFmpegFrameFilter filter;
+    private Map<Long, FFmpegFrameFilter> safeFilter;
+    private String filters;
+    private int height;
+    private int width;
+    private int pixelFormat;
+
 
     /** Calls {@code this(filters, width, height, 3)}. */
     public FilterImageTransform(String filters, int width, int height) {
@@ -49,18 +59,15 @@ public class FilterImageTransform extends BaseImageTransform {
      */
     public FilterImageTransform(String filters, int width, int height, int channels) {
         super(null);
-        int pixelFormat = channels == 1 ? AV_PIX_FMT_GRAY8
-                        : channels == 3 ? AV_PIX_FMT_BGR24 : channels == 4 ? AV_PIX_FMT_RGBA : AV_PIX_FMT_NONE;
+        this.height = height;
+        this.width = width;
+        this.pixelFormat = channels == 1 ? AV_PIX_FMT_GRAY8
+                : channels == 3 ? AV_PIX_FMT_BGR24 : channels == 4 ? AV_PIX_FMT_RGBA : AV_PIX_FMT_NONE;
         if (pixelFormat == AV_PIX_FMT_NONE) {
             throw new IllegalArgumentException("Unsupported number of channels: " + channels);
         }
-        try {
-            filter = new FFmpegFrameFilter(filters, width, height);
-            filter.setPixelFormat(pixelFormat);
-            filter.start();
-        } catch (FrameFilter.Exception e) {
-            throw new RuntimeException(e);
-        }
+        this.filters = filters;
+        this.safeFilter = new HashMap<>();
     }
 
     @Override
@@ -68,13 +75,33 @@ public class FilterImageTransform extends BaseImageTransform {
         if (image == null) {
             return null;
         }
+        FrameFilter filter = getSafeFilter(Thread.currentThread().getId());
+
         try {
+            filter.start();
             filter.push(image.getFrame());
             image = new ImageWritable(filter.pull());
+            filter.stop();
         } catch (FrameFilter.Exception e) {
             throw new RuntimeException(e);
         }
+
         return image;
+    }
+
+    protected FFmpegFrameFilter getSafeFilter(long threadId) {
+        if(safeFilter.containsKey(threadId))
+            return safeFilter.get(Thread.currentThread().getId());
+        else {
+            FFmpegFrameFilter filter = new FFmpegFrameFilter(filters, width, height);
+            filter.setPixelFormat(pixelFormat);
+            safeConverter.put(threadId, filter);
+            return filter;
+        }
+    }
+
+    protected FrameConverter<opencv_core.Mat> getSafeConverter(long threadId) {
+        throw new UnsupportedOperationException("Converters are not used in FilterImageTransform");
     }
 
 }

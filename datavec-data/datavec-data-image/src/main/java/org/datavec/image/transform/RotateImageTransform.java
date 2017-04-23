@@ -15,10 +15,12 @@
  */
 package org.datavec.image.transform;
 
+import java.util.HashMap;
 import java.util.Random;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import org.bytedeco.javacv.FrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.datavec.image.data.ImageWritable;
 
@@ -71,8 +73,7 @@ public class RotateImageTransform extends BaseImageTransform<Mat> {
         this.centery = centery;
         this.angle = angle;
         this.scale = scale;
-
-        converter = new OpenCVFrameConverter.ToMat();
+        this.safeConverter = new HashMap<>();
     }
 
     @Override
@@ -80,7 +81,9 @@ public class RotateImageTransform extends BaseImageTransform<Mat> {
         if (image == null) {
             return null;
         }
-        Mat mat = converter.convert(image.getFrame());
+        FrameConverter<Mat> frameConverter = getSafeConverter(Thread.currentThread().getId());
+
+        Mat mat = frameConverter.convert(image.getFrame());
         float cy = mat.rows() / 2 + centery * (random != null ? 2 * random.nextFloat() - 1 : 1);
         float cx = mat.cols() / 2 + centerx * (random != null ? 2 * random.nextFloat() - 1 : 1);
         float a = angle * (random != null ? 2 * random.nextFloat() - 1 : 1);
@@ -89,7 +92,17 @@ public class RotateImageTransform extends BaseImageTransform<Mat> {
         Mat result = new Mat();
         Mat M = getRotationMatrix2D(new Point2f(cx, cy), angle, scale);
         warpAffine(mat, result, M, mat.size(), interMode, borderMode, borderValue);
-        return new ImageWritable(converter.convert(result));
+        return new ImageWritable(frameConverter.convert(result));
+    }
+
+    protected FrameConverter<Mat> getSafeConverter(long threadId) {
+        if(safeConverter.containsKey(threadId))
+            return (FrameConverter<Mat>) safeConverter.get(Thread.currentThread().getId());
+        else {
+            FrameConverter<Mat> converter = new OpenCVFrameConverter.ToMat();
+            safeConverter.put(threadId, converter);
+            return converter;
+        }
     }
 
 }

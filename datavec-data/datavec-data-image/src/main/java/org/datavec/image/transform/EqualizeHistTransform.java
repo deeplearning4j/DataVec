@@ -15,9 +15,11 @@
  */
 package org.datavec.image.transform;
 
+import org.bytedeco.javacv.FrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.datavec.image.data.ImageWritable;
 
+import java.util.HashMap;
 import java.util.Random;
 
 import static org.bytedeco.javacpp.opencv_core.Mat;
@@ -53,7 +55,7 @@ public class EqualizeHistTransform extends BaseImageTransform {
     public EqualizeHistTransform(Random random, int conversionCode) {
         super(random);
         this.conversionCode = conversionCode;
-        converter = new OpenCVFrameConverter.ToMat();
+        this.safeConverter = new HashMap<>();
     }
 
     /**
@@ -70,7 +72,8 @@ public class EqualizeHistTransform extends BaseImageTransform {
         if (image == null) {
             return null;
         }
-        Mat mat = (Mat) converter.convert(image.getFrame());
+        FrameConverter<Mat> frameConverter = getSafeConverter(Thread.currentThread().getId());
+        Mat mat = frameConverter.convert(image.getFrame());
         Mat result = new Mat();
         try {
             if (mat.channels() == 1) {
@@ -84,9 +87,18 @@ public class EqualizeHistTransform extends BaseImageTransform {
             throw new RuntimeException(e);
         }
 
-        return new ImageWritable(converter.convert(result));
+        return new ImageWritable(frameConverter.convert(result));
     }
 
+    protected FrameConverter<Mat> getSafeConverter(long threadId) {
+        if(safeConverter.containsKey(threadId))
+            return (FrameConverter<Mat>) safeConverter.get(Thread.currentThread().getId());
+        else {
+            FrameConverter<Mat> converter = new OpenCVFrameConverter.ToMat();
+            safeConverter.put(threadId, converter);
+            return converter;
+        }
+    }
 
 
 }

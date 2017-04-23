@@ -18,6 +18,9 @@ package org.datavec.image.loader;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.ByteOrder;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.commons.io.IOUtils;
 import org.bytedeco.javacpp.DoublePointer;
 import org.bytedeco.javacpp.FloatPointer;
@@ -28,6 +31,7 @@ import org.bytedeco.javacpp.indexer.Indexer;
 import org.bytedeco.javacpp.indexer.IntIndexer;
 import org.bytedeco.javacpp.indexer.UByteIndexer;
 import org.bytedeco.javacpp.indexer.UShortIndexer;
+import org.bytedeco.javacv.FrameConverter;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.datavec.image.data.ImageWritable;
@@ -53,7 +57,8 @@ public class NativeImageLoader extends BaseImageLoader {
                     "png", "tif", "tiff", "exr", "webp", "BMP", "GIF", "JPG", "JPEG", "JP2", "PBM", "PGM", "PPM", "PNM",
                     "PNG", "TIF", "TIFF", "EXR", "WEBP"};
 
-    OpenCVFrameConverter.ToMat converter = null;
+//    OpenCVFrameConverter.ToMat converter = null;
+    Map<Long, FrameConverter<Mat>> safeConverter = new HashMap<>();
 
     /**
      * Loads images with no scaling or conversion.
@@ -110,7 +115,6 @@ public class NativeImageLoader extends BaseImageLoader {
     public NativeImageLoader(int height, int width, int channels, ImageTransform imageTransform) {
         this(height, width, channels);
         this.imageTransform = imageTransform;
-        this.converter = new OpenCVFrameConverter.ToMat();
     }
 
     @Override
@@ -205,18 +209,18 @@ public class NativeImageLoader extends BaseImageLoader {
 
     public INDArray asMatrix(BufferedImage image) throws IOException {
         Java2DFrameConverter c = new Java2DFrameConverter();
-        if (converter == null) {
-            converter = new OpenCVFrameConverter.ToMat();
-        }
+        FrameConverter<Mat> converter = getSafeConverter(Thread.currentThread().getId());
         return asMatrix(converter.convert(c.convert(image)));
     }
 
     public INDArray asMatrix(Mat image) throws IOException {
-        if (imageTransform != null && converter != null) {
-            ImageWritable writable = new ImageWritable(converter.convert(image));
+        OpenCVFrameConverter<Mat> frameConverter = new OpenCVFrameConverter.ToMat();
+        ImageWritable writable = new ImageWritable(frameConverter.convert(image));
+
+        if (imageTransform !=null)
             writable = imageTransform.transform(writable);
-            image = converter.convert(writable.getFrame());
-        }
+
+        image = frameConverter.convert(writable.getFrame());
 
         if (channels > 0 && image.channels() != channels) {
             int code = -1;
@@ -407,5 +411,15 @@ public class NativeImageLoader extends BaseImageLoader {
             resize(image, scaled = new Mat(), new Size(dstWidth, dstHeight));
         }
         return scaled;
+    }
+
+    private FrameConverter<Mat> getSafeConverter(long threadId) {
+        if(safeConverter.containsKey(threadId))
+            return safeConverter.get(Thread.currentThread().getId());
+        else {
+            FrameConverter<Mat> converter = new OpenCVFrameConverter.ToMat();
+            safeConverter.put(threadId, converter);
+            return converter;
+        }
     }
 }

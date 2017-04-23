@@ -16,9 +16,11 @@
 package org.datavec.image.transform;
 
 import org.bytedeco.javacpp.opencv_core;
+import org.bytedeco.javacv.FrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.datavec.image.data.ImageWritable;
 
+import java.util.HashMap;
 import java.util.Random;
 
 import static org.bytedeco.javacpp.opencv_imgproc.resize;
@@ -51,11 +53,9 @@ public class ResizeImageTransform extends BaseImageTransform<opencv_core.Mat> {
      */
     public ResizeImageTransform(Random random, int newWidth, int newHeight) {
         super(random);
-
         this.newWidth = newWidth;
         this.newHeight = newHeight;
-
-        converter = new OpenCVFrameConverter.ToMat();
+        this.safeConverter = new HashMap<>();
     }
 
     /**
@@ -71,10 +71,21 @@ public class ResizeImageTransform extends BaseImageTransform<opencv_core.Mat> {
         if (image == null) {
             return null;
         }
-        opencv_core.Mat mat = converter.convert(image.getFrame());
+        FrameConverter<opencv_core.Mat> frameConverter = getSafeConverter(Thread.currentThread().getId());
+        opencv_core.Mat mat = frameConverter.convert(image.getFrame());
         opencv_core.Mat result = new opencv_core.Mat();
         resize(mat, result, new opencv_core.Size(newWidth, newHeight));
-        return new ImageWritable(converter.convert(result));
+        return new ImageWritable(frameConverter.convert(result));
+    }
+
+    protected FrameConverter<opencv_core.Mat> getSafeConverter(long threadId) {
+        if(safeConverter.containsKey(threadId))
+            return (FrameConverter<opencv_core.Mat>) safeConverter.get(Thread.currentThread().getId());
+        else {
+            FrameConverter<opencv_core.Mat> converter = new OpenCVFrameConverter.ToMat();
+            safeConverter.put(threadId, converter);
+            return converter;
+        }
     }
 
 

@@ -15,7 +15,10 @@
  */
 package org.datavec.image.transform;
 
+import java.util.HashMap;
 import java.util.Random;
+
+import org.bytedeco.javacv.FrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.datavec.image.data.ImageWritable;
 import org.datavec.image.transform.BaseImageTransform;
@@ -48,8 +51,7 @@ public class RandomCropTransform extends BaseImageTransform<Mat> {
         this.outputWidth = width;
         this.rng = Nd4j.getRandom();
         rng.setSeed(seed);
-
-        converter = new OpenCVFrameConverter.ToMat();
+        this.safeConverter = new HashMap<>();
     }
 
     /**
@@ -64,6 +66,8 @@ public class RandomCropTransform extends BaseImageTransform<Mat> {
         if (image == null) {
             return null;
         }
+        FrameConverter<Mat> frameConverter = getSafeConverter(Thread.currentThread().getId());
+
         // ensure that transform is valid
         if (image.getFrame().imageHeight < outputHeight || image.getFrame().imageWidth < outputWidth)
             throw new UnsupportedOperationException(
@@ -75,7 +79,7 @@ public class RandomCropTransform extends BaseImageTransform<Mat> {
         int cropTop = image.getFrame().imageHeight - outputHeight;
         int cropLeft = image.getFrame().imageWidth - outputWidth;
 
-        Mat mat = converter.convert(image.getFrame());
+        Mat mat = frameConverter.convert(image.getFrame());
         int top = rng.nextInt(cropTop + 1);
         int left = rng.nextInt(cropLeft + 1);
 
@@ -83,8 +87,17 @@ public class RandomCropTransform extends BaseImageTransform<Mat> {
         int x = Math.min(left, mat.cols() - 1);
         Mat result = mat.apply(new Rect(x, y, outputWidth, outputHeight));
 
+        return new ImageWritable(frameConverter.convert(result));
+    }
 
-        return new ImageWritable(converter.convert(result));
+    protected FrameConverter<Mat> getSafeConverter(long threadId) {
+        if(safeConverter.containsKey(threadId))
+            return (FrameConverter<Mat>) safeConverter.get(Thread.currentThread().getId());
+        else {
+            FrameConverter<Mat> converter = new OpenCVFrameConverter.ToMat();
+            safeConverter.put(threadId, converter);
+            return converter;
+        }
     }
 
 }

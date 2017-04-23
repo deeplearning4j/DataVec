@@ -15,6 +15,7 @@
  */
 package org.datavec.image.transform;
 
+import java.util.Map;
 import java.util.Random;
 
 import org.bytedeco.javacv.FrameConverter;
@@ -30,7 +31,7 @@ import org.datavec.image.data.ImageWritable;
 public abstract class BaseImageTransform<F> implements ImageTransform {
 
     protected Random random;
-    protected FrameConverter<F> converter;
+    Map<Long, FrameConverter<F>> safeConverter;
 
     protected BaseImageTransform(Random random) {
         this.random = random;
@@ -40,5 +41,7 @@ public abstract class BaseImageTransform<F> implements ImageTransform {
     public ImageWritable transform(ImageWritable image) {
         return transform(image, random);
     }
+
+    abstract FrameConverter<F> getSafeConverter(long threadId);
 
 }

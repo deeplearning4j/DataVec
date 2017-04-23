@@ -15,7 +15,11 @@
  */
 package org.datavec.image.transform;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
+
+import org.bytedeco.javacv.FrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.datavec.image.data.ImageWritable;
 
@@ -60,8 +64,7 @@ public class CropImageTransform extends BaseImageTransform<Mat> {
         this.cropLeft = cropLeft;
         this.cropBottom = cropBottom;
         this.cropRight = cropRight;
-
-        converter = new OpenCVFrameConverter.ToMat();
+        this.safeConverter = new HashMap<>();
     }
 
     /**
@@ -77,7 +80,9 @@ public class CropImageTransform extends BaseImageTransform<Mat> {
         if (image == null) {
             return null;
         }
-        Mat mat = converter.convert(image.getFrame());
+        FrameConverter<Mat> frameConverter = getSafeConverter(Thread.currentThread().getId());
+
+        Mat mat = frameConverter.convert(image.getFrame());
         int top = random != null ? random.nextInt(cropTop + 1) : cropTop;
         int left = random != null ? random.nextInt(cropLeft + 1) : cropLeft;
         int bottom = random != null ? random.nextInt(cropBottom + 1) : cropBottom;
@@ -90,7 +95,17 @@ public class CropImageTransform extends BaseImageTransform<Mat> {
         Mat result = mat.apply(new Rect(x, y, w, h));
 
 
-        return new ImageWritable(converter.convert(result));
+        return new ImageWritable(frameConverter.convert(result));
+    }
+
+    protected FrameConverter<Mat> getSafeConverter(long threadId) {
+        if(safeConverter.containsKey(threadId))
+            return (FrameConverter<Mat>) safeConverter.get(Thread.currentThread().getId());
+        else {
+            FrameConverter<Mat> converter = new OpenCVFrameConverter.ToMat();
+            safeConverter.put(threadId, converter);
+            return converter;
+        }
     }
 
 }

@@ -16,7 +16,11 @@
 
 package org.datavec.image.recordreader;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
+import org.datavec.api.berkeley.Pair;
 import org.datavec.api.conf.Configuration;
 import org.datavec.api.io.labels.PathLabelGenerator;
 import org.datavec.api.records.Record;
@@ -39,12 +43,18 @@ import org.nd4j.linalg.collection.CompactHeapStringList;
 import java.io.*;
 import java.net.URI;
 import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Base class for the image record reader
  *
  * @author Adam Gibson
  */
+@Slf4j
 public abstract class BaseImageRecordReader extends BaseRecordReader {
     protected List<String> allPaths;
     protected Iterator<File> iter;
@@ -53,8 +63,6 @@ public abstract class BaseImageRecordReader extends BaseRecordReader {
     protected PathLabelGenerator labelGenerator = null;
     protected List<String> labels = new ArrayList<>();
     protected boolean appendLabel = false;
-    protected List<Writable> record;
-    protected boolean hitImage = false;
     protected int height = 28, width = 28, channels = 1;
     protected boolean cropImage = false;
     protected ImageTransform imageTransform;
@@ -69,6 +77,14 @@ public abstract class BaseImageRecordReader extends BaseRecordReader {
     public final static String CHANNELS = NAME_SPACE + ".channels";
     public final static String CROP_IMAGE = NAME_SPACE + ".cropimage";
     public final static String IMAGE_LOADER = NAME_SPACE + ".imageloader";
+
+    /*
+        fields for background prefetch
+     */
+    protected BlockingQueue<Pair<File, ? extends List<Writable>>> buffer;
+    protected PrefetchThread prefetchThread;
+    protected Pair<File, ? extends List<Writable>> nextElement;
+    protected Pair<File, ? extends List<Writable>> terminator = new Pair<>(new File(""), new ArrayList<Writable>());
 
     public BaseImageRecordReader() {}
 
@@ -151,6 +167,8 @@ public abstract class BaseImageRecordReader extends BaseRecordReader {
 
         //To ensure consistent order for label assignment (irrespective of file iteration order), we want to sort the list of labels
         Collections.sort(labels);
+
+        startPrefetch();
     }
 
 
@@ -201,52 +219,53 @@ public abstract class BaseImageRecordReader extends BaseRecordReader {
         initialize(conf, split);
     }
 
-
     @Override
-    public List<Writable> next() {
-        if (iter != null) {
-            List<Writable> ret;
-            File image = iter.next();
-            currentFile = image;
-
-            if (image.isDirectory())
-                return next();
-            try {
-                invokeListeners(image);
-                INDArray row = imageLoader.asMatrix(image);
-                ret = RecordConverter.toRecord(row);
-                if (appendLabel)
-                    ret.add(new IntWritable(labels.indexOf(getLabel(image.getPath()))));
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            return ret;
-        } else if (record != null) {
-            hitImage = true;
-            invokeListeners(record);
-            return record;
+    public boolean hasNext() {
+        try {
+            if (prefetchThread != null)
+                return prefetchThread.hasMore();
+            else
+                return false;
+        } catch (Exception e) {
+            log.error("Premature end of loop!");
+            return false;
         }
-        throw new IllegalStateException("No more elements");
     }
 
     @Override
-    public boolean hasNext() {
-        if (iter != null) {
-            boolean hasNext = iter.hasNext();
-            if (!hasNext && imageTransform != null) {
-                imageTransform.transform(null);
+    public List<Writable> next() {
+        Pair<File,? extends List<Writable>> temp = prefetchThread.nextElement();
+        currentFile = temp.getFirst();
+        nextElement = null;
+        return temp.getSecond();
+    }
+
+    @Override
+    public Record nextRecord() {
+        List<Writable> list = next();
+        URI uri = currentFile.toURI();
+        return new org.datavec.api.records.impl.Record(list, new RecordMetaDataURI(uri, BaseImageRecordReader.class));
+    }
+
+    @Override
+    public Record loadFromMetaData(RecordMetaData recordMetaData) throws IOException {
+        return loadFromMetaData(Collections.singletonList(recordMetaData)).get(0);
+    }
+
+    @Override
+    public List<Record> loadFromMetaData(List<RecordMetaData> recordMetaDatas) throws IOException {
+        List<Record> out = new ArrayList<>();
+        for (RecordMetaData meta : recordMetaDatas) {
+            URI uri = meta.getURI();
+            File f = new File(uri);
+
+            List<Writable> next;
+            try (DataInputStream dis = new DataInputStream(new BufferedInputStream(new FileInputStream(f)))) {
+                next = record(uri, dis);
             }
-            return hasNext;
-        } else if (record != null) {
-            if (hitImage && imageTransform != null) {
-                imageTransform.transform(null);
-            }
-            return !hitImage;
+            out.add(new org.datavec.api.records.impl.Record(next, meta));
         }
-        if (imageTransform != null) {
-            imageTransform.transform(null);
-        }
-        throw new IllegalStateException("Indeterminant state: record must not be null, or a file iterator must exist");
+        return out;
     }
 
     @Override
@@ -281,17 +300,6 @@ public abstract class BaseImageRecordReader extends BaseRecordReader {
     }
 
     /**
-     * Accumulate the label from the path
-     *
-     * @param path the path to get the label from
-     */
-    protected void accumulateLabel(String path) {
-        String name = getLabel(path);
-        if (!labels.contains(name))
-            labels.add(name);
-    }
-
-    /**
      * Returns the file loaded last by {@link #next()}.
      */
     public File getCurrentFile() {
@@ -314,18 +322,6 @@ public abstract class BaseImageRecordReader extends BaseRecordReader {
         this.labels = labels;
     }
 
-    @Override
-    public void reset() {
-        if (inputSplit == null)
-            throw new UnsupportedOperationException("Cannot reset without first initializing");
-        inputSplit.reset();
-        if (iter != null) {
-            iter = new FileFromPathIterator(inputSplit.locationsPathIterator());
-        } else if (record != null) {
-            hitImage = false;
-        }
-    }
-
     /**
      * Returns {@code getLabels().size()}.
      */
@@ -346,31 +342,109 @@ public abstract class BaseImageRecordReader extends BaseRecordReader {
         return ret;
     }
 
-    @Override
-    public Record nextRecord() {
-        List<Writable> list = next();
-        URI uri = currentFile.toURI();
-        return new org.datavec.api.records.impl.Record(list, new RecordMetaDataURI(uri, BaseImageRecordReader.class));
+    public void shutdown() {
+        prefetchThread.stopWork();
     }
 
     @Override
-    public Record loadFromMetaData(RecordMetaData recordMetaData) throws IOException {
-        return loadFromMetaData(Collections.singletonList(recordMetaData)).get(0);
-    }
-
-    @Override
-    public List<Record> loadFromMetaData(List<RecordMetaData> recordMetaDatas) throws IOException {
-        List<Record> out = new ArrayList<>();
-        for (RecordMetaData meta : recordMetaDatas) {
-            URI uri = meta.getURI();
-            File f = new File(uri);
-
-            List<Writable> next;
-            try (DataInputStream dis = new DataInputStream(new BufferedInputStream(new FileInputStream(f)))) {
-                next = record(uri, dis);
-            }
-            out.add(new org.datavec.api.records.impl.Record(next, meta));
+    public void reset() {
+        if (inputSplit == null)
+            throw new UnsupportedOperationException("Cannot reset without first initializing");
+        inputSplit.reset();
+        if (iter != null) {
+            iter = new FileFromPathIterator(inputSplit.locationsPathIterator());
         }
-        return out;
+        if (prefetchThread != null) {
+            prefetchThread.reset();
+            prefetchThread.setIterator(iter);
+        }
+    }
+
+    private void startPrefetch() {
+        this.buffer = new LinkedBlockingQueue<>();
+        this.prefetchThread = new PrefetchThread(iter, this.buffer);
+        prefetchThread.start();
+    }
+
+    private class PrefetchThread extends Thread implements Runnable {
+        @Setter
+        private Iterator<File> iterator;
+        private BlockingQueue<Pair<File,? extends List<Writable>>> buffer;
+        private AtomicBoolean shouldWork = new AtomicBoolean(true);
+        private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+
+        public PrefetchThread(
+                Iterator<File> iterator,
+                BlockingQueue<Pair<File,? extends List<Writable>>> buffer) {
+            this.buffer = buffer;
+            this.iterator = iterator;
+
+            setDaemon(true);
+            setName("ImageRecordReader prefetch Thread");
+        }
+
+        @Override
+        public void run() {
+            try {
+                while (shouldWork.get()) {
+                    List<Writable> ret;
+                    if(iterator != null) {
+                        if (iterator.hasNext()) {
+                            File image = iterator.next();
+                            currentFile = image;
+
+                            if (image.isDirectory()) {
+                                // do nothing
+                            } else {
+                                invokeListeners(image);
+                                INDArray row = imageLoader.asMatrix(image);
+                                ret = RecordConverter.toRecord(row);
+                                if (appendLabel)
+                                    ret.add(new IntWritable(labels.indexOf(getLabel(image.getPath()))));
+
+                                buffer.put(new Pair<>(image, ret));
+                            }
+                        }
+                    }
+                }
+
+            } catch (Exception e) {
+                // TODO: pass that forward
+                throw new RuntimeException(e);
+            }
+        }
+
+        public boolean hasMore() {
+            if(!buffer.isEmpty())
+                return true;
+            else
+                return iterator.hasNext();
+        }
+
+        public Pair<File,? extends List<Writable>> nextElement() {
+            if (!buffer.isEmpty())
+                return buffer.poll();
+
+            try {
+                return buffer.poll(500L, TimeUnit.MILLISECONDS);
+            } catch (Exception e) {
+                return null;
+            }
+        }
+
+        public void reset() {
+            try {
+//                lock.writeLock().lock();
+                buffer.clear();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+//                lock.writeLock().unlock();
+            }
+        }
+
+        public void stopWork() {
+            shouldWork.set(false);
+        }
     }
 }
