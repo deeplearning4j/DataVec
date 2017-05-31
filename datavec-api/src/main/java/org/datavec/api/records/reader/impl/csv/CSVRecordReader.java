@@ -18,17 +18,20 @@ package org.datavec.api.records.reader.impl.csv;
 
 
 
+import org.apache.commons.io.IOUtils;
 import org.datavec.api.conf.Configuration;
 import org.datavec.api.records.Record;
 import org.datavec.api.records.metadata.RecordMetaData;
 import org.datavec.api.records.metadata.RecordMetaDataLine;
 import org.datavec.api.records.reader.impl.LineRecordReader;
+import org.datavec.api.split.StringSplit;
 import org.datavec.api.writable.Text;
 import org.datavec.api.split.InputSplit;
 import org.datavec.api.writable.Writable;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.util.*;
 
@@ -90,6 +93,20 @@ public class CSVRecordReader extends LineRecordReader {
         this.skipNumLines = conf.getInt(SKIP_NUM_LINES, this.skipNumLines);
         this.delimiter = conf.get(DELIMITER, DEFAULT_DELIMITER);
         this.quote = conf.get(QUOTE, null);
+    }
+
+    @Override
+    public boolean hasNext() {
+        if (!skippedLines && skipNumLines > 0) {
+            for (int i = 0; i < skipNumLines; i++) {
+                if (!super.hasNext()) {
+                    return false;
+                }
+                super.next();
+            }
+            skippedLines = true;
+        }
+        return super.hasNext();
     }
 
     @Override

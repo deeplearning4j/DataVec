@@ -31,6 +31,8 @@ import org.datavec.api.util.ClassPathResource;
 import org.datavec.api.writable.Writable;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -231,4 +233,14 @@ public class CSVRecordReaderTest {
         }
     }
 
+    @Test
+    public void testCsvWithHeaderOnly() throws IOException, InterruptedException {
+        String header = "one,two,three\n";
+        File tempFile = File.createTempFile("csvWithHeaderOnly", ".csv");
+        FileUtils.write(tempFile, header, "utf-8");
+
+        CSVRecordReader rr = new CSVRecordReader(1, ",");
+        rr.initialize(new FileSplit(tempFile));
+        rr.next();
+    }
 }
