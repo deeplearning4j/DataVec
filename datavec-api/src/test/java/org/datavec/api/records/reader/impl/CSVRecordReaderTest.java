@@ -251,7 +251,6 @@ public class CSVRecordReaderTest {
         rr.initialize(new FileSplit(tempFile));
         rr.reset();
         assertTrue(!rr.hasNext());
-        rr.reset();
         rr.next();
     }
 
