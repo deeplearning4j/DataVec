@@ -36,7 +36,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import static org.junit.Assert.*;
 
@@ -233,14 +235,42 @@ public class CSVRecordReaderTest {
         }
     }
 
-    @Test
-    public void testCsvWithHeaderOnly() throws IOException, InterruptedException {
-        String header = "one,two,three\n";
-        File tempFile = File.createTempFile("csvWithHeaderOnly", ".csv");
-        FileUtils.write(tempFile, header, "utf-8");
+    @Test(expected=NoSuchElementException.class)
+    public void testCsvSkipAllLines() throws IOException, InterruptedException {
+        final int numLines = 4;
+        final List<Writable> lineList = Arrays.asList((Writable) new IntWritable(numLines-1), (Writable) new Text("one"),
+                                                      (Writable) new Text("two"), (Writable) new Text("three"));
+        String header = ",one,two,three";
+        List<String> lines = new ArrayList<>();
+        for (int i = 0; i < numLines; i++)
+            lines.add(Integer.toString(i) + header);
+        File tempFile = File.createTempFile("csvSkipLines", ".csv");
+        FileUtils.writeLines(tempFile, lines);
 
-        CSVRecordReader rr = new CSVRecordReader(1, ",");
+        CSVRecordReader rr = new CSVRecordReader(numLines, ",");
         rr.initialize(new FileSplit(tempFile));
-        assert(!rr.hasNext());
+        rr.reset();
+        assertTrue(!rr.hasNext());
+        rr.reset();
+        rr.next();
+    }
+
+    @Test
+    public void testCsvSkipAllButOneLine() throws IOException, InterruptedException {
+        final int numLines = 4;
+        final List<Writable> lineList = Arrays.asList((Writable) new Text(Integer.toString(numLines-1)), (Writable) new Text("one"),
+                                                      (Writable) new Text("two"), (Writable) new Text("three"));
+        String header = ",one,two,three";
+        List<String> lines = new ArrayList<>();
+        for (int i = 0; i < numLines; i++)
+            lines.add(Integer.toString(i) + header);
+        File tempFile = File.createTempFile("csvSkipLines", ".csv");
+        FileUtils.writeLines(tempFile, lines);
+
+        CSVRecordReader rr = new CSVRecordReader(numLines-1, ",");
+        rr.initialize(new FileSplit(tempFile));
+        rr.reset();
+        assertTrue(rr.hasNext());
+        assertEquals(rr.next(), lineList);
     }
 }
