@@ -16,10 +16,7 @@
 
 package org.datavec.api.transform.transform;
 
-import org.datavec.api.transform.DataAction;
-import org.datavec.api.transform.MathOp;
-import org.datavec.api.transform.ReduceOp;
-import org.datavec.api.transform.TransformProcess;
+import org.datavec.api.transform.*;
 import org.datavec.api.transform.analysis.DataAnalysis;
 import org.datavec.api.transform.analysis.columns.CategoricalAnalysis;
 import org.datavec.api.transform.analysis.columns.DoubleAnalysis;
@@ -27,6 +24,7 @@ import org.datavec.api.transform.analysis.columns.StringAnalysis;
 import org.datavec.api.transform.condition.ConditionOp;
 import org.datavec.api.transform.condition.column.DoubleColumnCondition;
 import org.datavec.api.transform.condition.column.NullWritableColumnCondition;
+import org.datavec.api.transform.condition.sequence.SequenceLengthCondition;
 import org.datavec.api.transform.filter.ConditionFilter;
 import org.datavec.api.transform.filter.FilterInvalidValues;
 import org.datavec.api.transform.reduce.Reducer;
@@ -37,20 +35,19 @@ import org.datavec.api.transform.sequence.split.SequenceSplitTimeSeparation;
 import org.datavec.api.transform.sequence.window.OverlappingTimeWindowFunction;
 import org.datavec.api.transform.transform.integer.ReplaceEmptyIntegerWithValueTransform;
 import org.datavec.api.transform.transform.integer.ReplaceInvalidWithIntegerTransform;
+import org.datavec.api.transform.transform.sequence.SequenceOffsetTransform;
 import org.datavec.api.transform.transform.string.MapAllStringsExceptListTransform;
 import org.datavec.api.transform.transform.string.ReplaceEmptyStringTransform;
 import org.datavec.api.transform.transform.string.StringListToCategoricalSetTransform;
 import org.datavec.api.transform.transform.time.DeriveColumnsFromTimeTransform;
 import org.datavec.api.writable.DoubleWritable;
+import org.datavec.api.writable.IntWritable;
 import org.datavec.api.writable.comparator.LongWritableComparator;
 import org.joda.time.DateTimeFieldType;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
@@ -140,6 +137,11 @@ public class TestJsonYaml {
                                         .convertFromSequence()
                                         .calculateSortedRank("rankColName", "TimeCol2", new LongWritableComparator())
                                         .sequenceMovingWindowReduce("rankColName", 20, ReduceOp.Mean)
+                                        .addConstantColumn("someIntColumn", ColumnType.Integer, new IntWritable(0))
+                                        .integerToOneHot("someIntColumn", 0, 3)
+                                        .filter(new SequenceLengthCondition(ConditionOp.LessThan, 1))
+                                        .addConstantColumn("testColSeq", ColumnType.Integer, new DoubleWritable(0))
+                                        .offsetSequence(Collections.singletonList("testColSeq"), 1, SequenceOffsetTransform.OperationType.InPlace)
                                         .build();
 
         String asJson = tp.toJson();

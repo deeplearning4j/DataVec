@@ -33,13 +33,13 @@ import java.util.List;
  * @author Alex Black
  */
 @AllArgsConstructor
-public class SparkGroupToSequenceFunction
-                implements Function<Tuple2<Writable, Iterable<List<Writable>>>, List<List<Writable>>> {
+public class SparkGroupToSequenceFunction<T>
+                implements Function<Tuple2<T, Iterable<List<Writable>>>, List<List<Writable>>> {
 
     private final SequenceComparator comparator;
 
     @Override
-    public List<List<Writable>> call(Tuple2<Writable, Iterable<List<Writable>>> tuple) throws Exception {
+    public List<List<Writable>> call(Tuple2<T, Iterable<List<Writable>>> tuple) throws Exception {
 
         List<List<Writable>> list = new ArrayList<>();
         for (List<Writable> writables : tuple._2())

@@ -17,10 +17,13 @@
 package org.datavec.api.transform;
 
 import org.datavec.api.transform.sequence.ReduceSequenceTransform;
+import org.datavec.api.transform.sequence.trim.SequenceTrimTransform;
 import org.datavec.api.transform.transform.column.*;
+import org.datavec.api.transform.transform.integer.*;
 import org.datavec.api.transform.transform.parse.ParseDoubleTransform;
 import org.datavec.api.transform.transform.sequence.SequenceDifferenceTransform;
 import org.datavec.api.transform.transform.sequence.SequenceMovingWindowReduceTransform;
+import org.datavec.api.transform.transform.sequence.SequenceOffsetTransform;
 import org.nd4j.shade.jackson.annotation.JsonInclude;
 import org.nd4j.shade.jackson.annotation.JsonSubTypes;
 import org.nd4j.shade.jackson.annotation.JsonTypeInfo;
@@ -33,10 +36,6 @@ import org.datavec.api.transform.transform.categorical.StringToCategoricalTransf
 import org.datavec.api.transform.transform.condition.ConditionalCopyValueTransform;
 import org.datavec.api.transform.transform.condition.ConditionalReplaceValueTransform;
 import org.datavec.api.transform.transform.doubletransform.*;
-import org.datavec.api.transform.transform.integer.IntegerColumnsMathOpTransform;
-import org.datavec.api.transform.transform.integer.IntegerMathOpTransform;
-import org.datavec.api.transform.transform.integer.ReplaceEmptyIntegerWithValueTransform;
-import org.datavec.api.transform.transform.integer.ReplaceInvalidWithIntegerTransform;
 import org.datavec.api.transform.transform.longtransform.LongColumnsMathOpTransform;
 import org.datavec.api.transform.transform.longtransform.LongMathOpTransform;
 import org.datavec.api.transform.transform.string.*;
@@ -102,7 +101,9 @@ import java.util.List;
                 @JsonSubTypes.Type(value = SequenceDifferenceTransform.class, name = "SequenceDifferenceTransform"),
                 @JsonSubTypes.Type(value = ReduceSequenceTransform.class, name = "ReduceSequenceTransform"),
                 @JsonSubTypes.Type(value = SequenceMovingWindowReduceTransform.class, name = "SequenceMovingWindowReduceTransform"),
-
+                @JsonSubTypes.Type(value = IntegerToOneHotTransform.class, name = "IntegerToOneHotTransform"),
+                @JsonSubTypes.Type(value = SequenceTrimTransform.class, name = "SequenceTrimTransform"),
+                @JsonSubTypes.Type(value = SequenceOffsetTransform.class, name = "SequenceOffsetTransform")
 })
 public interface Transform extends Serializable, ColumnOp {
 

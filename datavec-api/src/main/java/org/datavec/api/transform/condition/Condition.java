@@ -17,6 +17,7 @@
 package org.datavec.api.transform.condition;
 
 import org.datavec.api.transform.ColumnOp;
+import org.datavec.api.transform.condition.sequence.SequenceLengthCondition;
 import org.nd4j.shade.jackson.annotation.JsonInclude;
 import org.nd4j.shade.jackson.annotation.JsonSubTypes;
 import org.nd4j.shade.jackson.annotation.JsonTypeInfo;
@@ -47,7 +48,10 @@ import java.util.List;
                 @JsonSubTypes.Type(value = StringColumnCondition.class, name = "StringColumnCondition"),
                 @JsonSubTypes.Type(value = TimeColumnCondition.class, name = "TimeColumnCondition"),
                 @JsonSubTypes.Type(value = StringRegexColumnCondition.class, name = "StringRegexColumnCondition"),
-                @JsonSubTypes.Type(value = BooleanCondition.class, name = "BooleanCondition")})
+                @JsonSubTypes.Type(value = BooleanCondition.class, name = "BooleanCondition"),
+                @JsonSubTypes.Type(value = NaNColumnCondition.class, name = "NaNColumnCondition"),
+                @JsonSubTypes.Type(value = InfiniteColumnCondition.class, name = "InfiniteColumnCondition"),
+                @JsonSubTypes.Type(value = SequenceLengthCondition.class, name = "SequenceLengthCondition")})
 public interface Condition extends Serializable, ColumnOp {
 
     /**

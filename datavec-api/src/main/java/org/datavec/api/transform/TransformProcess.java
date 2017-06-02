@@ -21,7 +21,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ClassUtils;
 import org.datavec.api.transform.filter.ConditionFilter;
 import org.datavec.api.transform.sequence.*;
+import org.datavec.api.transform.sequence.trim.SequenceTrimTransform;
+import org.datavec.api.transform.transform.integer.IntegerToOneHotTransform;
 import org.datavec.api.transform.transform.sequence.SequenceMovingWindowReduceTransform;
+import org.datavec.api.transform.transform.sequence.SequenceOffsetTransform;
 import org.datavec.api.transform.transform.string.AppendStringColumnTransform;
 import org.datavec.api.transform.transform.string.ConvertToString;
 import org.datavec.api.transform.transform.string.ReplaceStringTransform;
@@ -267,9 +270,9 @@ public class TransformProcess implements Serializable {
                 currValues = t.mapSequence(currValues);
 
             } else if (d.getFilter() != null) {
-                //                Filter f = d.getFilter();
-                //                if (f.removeExample(currValues)) return null;
-                throw new RuntimeException("Sequence filtering not yet implemnted here");
+                if(d.getFilter().removeSequence(currValues)){
+                    return null;
+                }
             } else if (d.getConvertToSequence() != null) {
                 throw new RuntimeException(
                                 "Cannot execute examples individually: TransformProcess contains a ConvertToSequence operation");
@@ -280,7 +283,7 @@ public class TransformProcess implements Serializable {
                 throw new RuntimeException(
                                 "Cannot execute examples individually: TransformProcess contains a SequenceSplit operation");
             } else {
-                throw new RuntimeException("Unknown action: " + d);
+                throw new RuntimeException("Unknown or not supported action: " + d);
             }
         }
 
@@ -814,6 +817,17 @@ public class TransformProcess implements Serializable {
         }
 
         /**
+         * Convert an integer column to a set of 1 hot columns, based on the value in integer column
+         *
+         * @param columnName Name of the integer column
+         * @param minValue   Minimum value possible for the integer column (inclusive)
+         * @param maxValue   Maximum value possible for the integer column (inclusive)
+         */
+        public Builder integerToOneHot(String columnName, int minValue, int maxValue){
+            return transform(new IntegerToOneHotTransform(columnName, minValue, maxValue));
+        }
+
+        /**
          * Add a new column, where all values in the column are identical and as specified.
          *
          * @param newColumnName Name of the new column
@@ -929,6 +943,19 @@ public class TransformProcess implements Serializable {
             return this;
         }
 
+        /**
+         * Convert a set of independent records/examples into a sequence, where each sequence is grouped according to
+         * one or more key values (i.e., the values in one or more columns)
+         * Within each sequence, values are ordered using the provided {@link SequenceComparator}
+         *
+         * @param keyColumns  Column to use as a key (values with the same key will be combined into sequences)
+         * @param comparator A SequenceComparator to order the values within each sequence (for example, by time or String order)
+         */
+        public Builder convertToSequence(List<String> keyColumns, SequenceComparator comparator) {
+            actionList.add(new DataAction(new ConvertToSequence(keyColumns, comparator)));
+            return this;
+        }
+
 
         /**
          * Convert a sequence to a set of individual values (by treating each value in each sequence as a separate example)
@@ -947,6 +974,34 @@ public class TransformProcess implements Serializable {
             actionList.add(new DataAction(split));
             return this;
         }
+
+        /**
+         * SequenceTrimTranform removes the first or last N values in a sequence. Note that the resulting sequence
+         * may be of length 0, if the input sequence is less than or equal to N.
+         *
+         * @param numStepsToTrim Number of time steps to trim from the sequence
+         * @param trimFromStart  If true: Trim values from the start of the sequence. If false: trim values from the end.
+         */
+        public Builder trimSequence(int numStepsToTrim, boolean trimFromStart){
+            actionList.add(new DataAction(new SequenceTrimTransform(numStepsToTrim, trimFromStart)));
+            return this;
+        }
+
+        /**
+         * Perform a sequence of operation on the specified columns. Note that this also truncates sequences by the
+         * specified offset amount by default. Use {@code transform(new SequenceOffsetTransform(...)} to change this.
+         * See {@link SequenceOffsetTransform} for details on exactly what this operation does and how.
+         *
+         * @param columnsToOffset Columns to offset
+         * @param offsetAmount    Amount to offset the specified columns by (positive offset: 'columnsToOffset' are
+         *                        moved to later time steps)
+         * @param operationType   Whether the offset should be done in-place or by adding a new column
+         */
+        public Builder offsetSequence(List<String> columnsToOffset, int offsetAmount, SequenceOffsetTransform.OperationType operationType){
+            return transform(new SequenceOffsetTransform(columnsToOffset, offsetAmount, operationType,
+                    SequenceOffsetTransform.EdgeHandling.TrimSequence, null));
+        }
+
 
         /**
          * Reduce (i.e., aggregate/combine) a set of examples (typically by key).
