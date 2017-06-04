@@ -113,7 +113,7 @@ public class CSVRecordReader extends LineRecordReader {
     @Override
     public List<Writable> next() {
         if (!skipLines())
-            return new ArrayList<>();
+            throw new NoSuchElementException("No next element found!");
         Text t = (Text) super.next().iterator().next();
         String val = t.toString();
         return parseLine(val);
