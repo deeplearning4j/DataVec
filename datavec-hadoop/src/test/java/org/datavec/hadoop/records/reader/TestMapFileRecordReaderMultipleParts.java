@@ -195,7 +195,8 @@ public class TestMapFileRecordReaderMultipleParts {
 
         f = LongIndexToKey.class.getDeclaredField("readerIndices");
         f.setAccessible(true);
-        assertEquals(expReaderExampleIdxs, f.get(itk));
+        List<Pair<Long, Long>> actual = (List<Pair<Long, Long>>) f.get(itk);
+        assertTrue(expReaderExampleIdxs.containsAll(actual) && actual.containsAll(expReaderExampleIdxs));
         //        System.out.println(f.get(itk));
 
         //Check standard iteration order (no randomization)
@@ -260,7 +261,8 @@ public class TestMapFileRecordReaderMultipleParts {
 
         f = LongIndexToKey.class.getDeclaredField("readerIndices");
         f.setAccessible(true);
-        assertEquals(expReaderExampleIdxs, f.get(itk));
+        List<Pair<Long, Long>> actual = (List<Pair<Long, Long>>) f.get(itk);
+        assertTrue(expReaderExampleIdxs.containsAll(actual) && actual.containsAll(expReaderExampleIdxs));
 
         assertTrue(rr.hasNext());
         int count = 0;
