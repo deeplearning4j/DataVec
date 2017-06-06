@@ -40,10 +40,12 @@ import java.util.*;
 @EqualsAndHashCode(callSuper = false, exclude = {"columnIdx"})
 public class StringListToCategoricalSetTransform extends BaseTransform {
 
+    public static final String UNK_STRING = "<UNK>";
     private final String columnName;
     private final List<String> newColumnNames;
     private final List<String> categoryTokens;
     private final String delimiter;
+    private boolean allowUnknownString;
 
     private final Map<String, Integer> map;
 
@@ -55,22 +57,44 @@ public class StringListToCategoricalSetTransform extends BaseTransform {
      * @param categoryTokens The possible tokens that may be present. Note this list must have the same length and order
      *                       as the newColumnNames list
      * @param delimiter      The delimiter for the Strings to convert
+     * @param allowUnknownString Add a column for unknown strings and allow them
      */
     public StringListToCategoricalSetTransform(@JsonProperty("columnName") String columnName,
                     @JsonProperty("newColumnNames") List<String> newColumnNames,
                     @JsonProperty("categoryTokens") List<String> categoryTokens,
-                    @JsonProperty("delimiter") String delimiter) {
+                    @JsonProperty("delimiter") String delimiter,
+                    @JsonProperty("useUnknownString") boolean allowUnknownString) {
         if (newColumnNames.size() != categoryTokens.size())
             throw new IllegalArgumentException("Names/tokens sizes cannot differ");
         this.columnName = columnName;
         this.newColumnNames = newColumnNames;
         this.categoryTokens = categoryTokens;
         this.delimiter = delimiter;
+        this.allowUnknownString = allowUnknownString;
 
         map = new HashMap<>();
         for (int i = 0; i < categoryTokens.size(); i++) {
             map.put(categoryTokens.get(i), i);
         }
+        if (this.allowUnknownString) {
+            map.put(UNK_STRING, categoryTokens.size());
+            this.newColumnNames.add(UNK_STRING);
+            this.categoryTokens.add(UNK_STRING);
+        }
+    }
+
+    /**
+     * @param columnName     The name of the column to convert
+     * @param newColumnNames The names of the new columns to create
+     * @param categoryTokens The possible tokens that may be present. Note this list must have the same length and order
+     *                       as the newColumnNames list
+     * @param delimiter      The delimiter for the Strings to convert
+     */
+    public StringListToCategoricalSetTransform(@JsonProperty("columnName") String columnName,
+                                               @JsonProperty("newColumnNames") List<String> newColumnNames,
+                                               @JsonProperty("categoryTokens") List<String> categoryTokens,
+                                               @JsonProperty("delimiter") String delimiter) {
+        this(columnName, newColumnNames, categoryTokens, delimiter, false);
     }
 
     @Override
@@ -119,6 +143,10 @@ public class StringListToCategoricalSetTransform extends BaseTransform {
                         + ",categoryTokens=" + categoryTokens + ",delimiter=\"" + delimiter + "\")";
     }
 
+    protected Writable convertToWritable(boolean val) {
+        return new Text(val ? "true" : "false");
+    }
+
     @Override
     public List<Writable> map(List<Writable> writables) {
         if (writables.size() != inputSchema.numColumns()) {
@@ -138,13 +166,17 @@ public class StringListToCategoricalSetTransform extends BaseTransform {
                     String[] split = str.split(delimiter);
                     for (String s : split) {
                         Integer idx = map.get(s);
-                        if (idx == null)
-                            throw new IllegalStateException("Encountered unknown String: \"" + s + "\"");
+                        if (idx == null) {
+                            if (allowUnknownString)
+                                idx = map.get(UNK_STRING);
+                            else
+                                throw new IllegalStateException("Encountered unknown String: \"" + s + "\"");
+                        }
                         present[idx] = true;
                     }
                 }
                 for (int j = 0; j < present.length; j++) {
-                    out.add(new Text(present[j] ? "true" : "false"));
+                    out.add(convertToWritable(present[j]));
                 }
             } else {
                 //No change to this column
