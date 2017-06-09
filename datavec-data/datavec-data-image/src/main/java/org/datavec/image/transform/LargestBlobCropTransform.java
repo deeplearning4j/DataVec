@@ -17,37 +17,61 @@ package org.datavec.image.transform;
 
 import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.datavec.image.data.ImageWritable;
-import org.datavec.image.transform.BaseImageTransform;
-import org.jfree.util.Log;
 import org.nd4j.linalg.factory.Nd4j;
+
 import java.util.Random;
+
 import static org.bytedeco.javacpp.opencv_core.*;
 import static org.bytedeco.javacpp.opencv_imgproc.*;
 
+/**
+ * crop images based on it's largest blob. Calls internally
+ * {@link org.bytedeco.javacpp.opencv_imgproc#blur(Mat, Mat, Size)}
+ * {@link org.bytedeco.javacpp.opencv_imgproc#Canny(Mat ,Mat, double, double)}
+ * {@link org.bytedeco.javacpp.opencv_imgproc#threshold(Mat, Mat, double, double, int)}
+ * {@link org.bytedeco.javacpp.opencv_imgproc#findContours(Mat, MatVector, Mat, int, int)}
+ * {@link org.bytedeco.javacpp.opencv_imgproc#contourArea(Mat, boolean)}
+ *
+ * @author antdood
+ */
 public class LargestBlobCropTransform extends BaseImageTransform<Mat> {
 
     protected org.nd4j.linalg.api.rng.Random rng;
 
-    protected int mode,method,blurWidth,blurHeight,upperThresh,lowerThresh,cannyOrThresh;
+    protected int mode, method, blurWidth, blurHeight, upperThresh, lowerThresh;
+    protected boolean isCanny;
 
+    /** Calls {@code this(null}*/
     public LargestBlobCropTransform() {
         this(null);
     }
 
+    /** Calls {@code this(random, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE, 3, 3, 100, 200, true)}*/
     public LargestBlobCropTransform(Random random) {
-        this(random, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE, 3, 3, 100, 200 , 0);
+        this(random, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE, 3, 3, 100, 200, true);
     }
 
-    public LargestBlobCropTransform(Random random, int mode, int method, int blurWidth, int blurHeight, int UpperThresh, int LowerThresh, int CannyOrThresh){
+    /**
+     *
+     * @param random        Object to use (or null for deterministic)
+     * @param mode          Contour retrieval mode
+     * @param method        Contour approximation method
+     * @param blurWidth     Width of blurring kernel size
+     * @param blurHeight    Height of blurring kernel size
+     * @param lowerThresh   Lower threshold for either Canny or Threshold
+     * @param upperThresh   Upper threshold for either Canny or Threshold
+     * @param isCanny       Whether the edge detector is Canny or Threshold
+     */
+    public LargestBlobCropTransform(Random random, int mode, int method, int blurWidth, int blurHeight, int lowerThresh, int upperThresh, boolean isCanny) {
         super(random);
         this.rng = Nd4j.getRandom();
         this.mode = mode;
         this.method = method;
         this.blurWidth = blurWidth;
         this.blurHeight = blurHeight;
-        this.lowerThresh = LowerThresh;
-        this.upperThresh = UpperThresh;
-        this.cannyOrThresh = CannyOrThresh;
+        this.lowerThresh = lowerThresh;
+        this.upperThresh = upperThresh;
+        this.isCanny = isCanny;
 
         converter = new OpenCVFrameConverter.ToMat();
     }
@@ -61,23 +85,23 @@ public class LargestBlobCropTransform extends BaseImageTransform<Mat> {
      */
     @Override
     public ImageWritable transform(ImageWritable image, Random random) {
-        if (image == null) {;
+        if (image == null) {
             return null;
         }
 
         //Convert image to gray and blur
         Mat original = converter.convert(image.getFrame());
         Mat grayed = new Mat();
-        cvtColor( original, grayed, CV_BGR2GRAY );
+        cvtColor(original, grayed, CV_BGR2GRAY);
         if (blurWidth > 0 && blurHeight > 0)
-            blur( grayed, grayed, new Size(blurWidth,blurHeight));
+            blur(grayed, grayed, new Size(blurWidth, blurHeight));
 
         //Get edges from Canny edge detector
         Mat edgeOut = new Mat();
-        if (cannyOrThresh == 0)
-            Canny( grayed, edgeOut, lowerThresh, upperThresh );
+        if (isCanny)
+            Canny(grayed, edgeOut, lowerThresh, upperThresh);
         else
-            threshold(grayed, edgeOut,lowerThresh,upperThresh, 0);
+            threshold(grayed, edgeOut, lowerThresh, upperThresh, 0);
 
         double largestArea = 0;
         Rect boundingRect = new Rect();
@@ -86,14 +110,13 @@ public class LargestBlobCropTransform extends BaseImageTransform<Mat> {
 
         findContours(edgeOut, contours, hierarchy, this.mode, this.method);
 
-        for( int i = 0; i< contours.size(); i++ )
-        {
+        for (int i = 0; i < contours.size(); i++) {
             //  Find the area of contour
-            double a=contourArea( contours.get(i),false);
+            double area = contourArea(contours.get(i), false);
 
-            if(a>largestArea){
+            if (area > largestArea) {
                 // Find the bounding rectangle for biggest contour
-                boundingRect=boundingRect(contours.get(i));
+                boundingRect = boundingRect(contours.get(i));
             }
         }
 
@@ -102,5 +125,4 @@ public class LargestBlobCropTransform extends BaseImageTransform<Mat> {
 
         return new ImageWritable(converter.convert(result));
     }
-
 }
