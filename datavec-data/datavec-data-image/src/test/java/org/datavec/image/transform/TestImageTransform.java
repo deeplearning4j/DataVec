@@ -15,25 +15,22 @@
  */
 package org.datavec.image.transform;
 
+import org.bytedeco.javacpp.indexer.UByteIndexer;
+import org.bytedeco.javacv.CanvasFrame;
+import org.bytedeco.javacv.Frame;
+import org.bytedeco.javacv.OpenCVFrameConverter;
+import org.datavec.api.berkeley.Pair;
+import org.datavec.image.data.ImageWritable;
+import org.junit.Ignore;
+import org.junit.Test;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
-import org.bytedeco.javacpp.indexer.UByteIndexer;
-import org.bytedeco.javacv.CanvasFrame;
-import org.datavec.api.berkeley.Pair;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.OpenCVFrameConverter;
-import org.datavec.image.data.ImageWritable;
-
-import static org.bytedeco.javacpp.opencv_imgproc.COLOR_BGR2YCrCb;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
 
 import static org.bytedeco.javacpp.opencv_core.*;
 import static org.bytedeco.javacpp.opencv_imgproc.*;
+import static org.junit.Assert.*;
 
 /**
  *
@@ -254,6 +251,25 @@ public class TestImageTransform {
             assertTrue(f.imageWidth == frame.imageWidth / 2);
             assertEquals(f.imageChannels, frame.imageChannels);
         }
+        assertEquals(null, transform.transform(null));
+    }
+
+    @Test
+    public void testLargestBlobCropTransform() throws Exception {
+        ImageWritable writable = makeRandomImage(0, 0, 3);
+        Frame frame = writable.getFrame();
+
+        ImageTransform showOrig = new ShowImageTransform("Original Image", 50);
+        showOrig.transform(writable);
+
+        ImageTransform transform = new LargestBlobCropTransform();
+        ImageWritable w = transform.transform(writable);
+
+        ImageTransform showTrans = new ShowImageTransform("Largest Blob", 50);
+        showTrans.transform(w);
+        Frame newFrame = w.getFrame();
+
+        assertNotEquals(frame, newFrame);
         assertEquals(null, transform.transform(null));
     }
 
