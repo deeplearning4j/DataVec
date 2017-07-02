@@ -16,11 +16,15 @@
 
 package org.datavec.api.transform.transform;
 
+import junit.framework.Assert;
 import org.datavec.api.transform.*;
+import org.datavec.api.transform.nlp.impl.DefaultVocabProvider;
+import org.datavec.api.transform.nlp.impl.DefaultVocabulary;
 import org.datavec.api.transform.reduce.IAssociativeReducer;
 import org.datavec.api.transform.reduce.Reducer;
 import org.datavec.api.transform.schema.SequenceSchema;
 import org.datavec.api.transform.sequence.ReduceSequenceTransform;
+import org.datavec.api.transform.sequence.nlp.TextToIntegerSequenceTransform;
 import org.datavec.api.transform.sequence.trim.SequenceTrimTransform;
 import org.datavec.api.transform.transform.categorical.*;
 import org.datavec.api.transform.transform.column.*;
@@ -51,11 +55,10 @@ import junit.framework.TestCase;
 import org.joda.time.DateTimeFieldType;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
+import org.nd4j.shade.jackson.core.JsonFactory;
+import org.nd4j.shade.jackson.databind.ObjectMapper;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -247,6 +250,88 @@ public class TestTransforms {
                         transform.map(Collections.singletonList((Writable) new Text("one"))));
         assertEquals(Collections.singletonList((Writable) new Text("two")),
                         transform.map(Collections.singletonList((Writable) new Text("two"))));
+    }
+
+    @Test
+    public void testConcatenateStringColumnsTransform() throws Exception {
+        final String DELIMITER = " ";
+        final String NEW_COLUMN = "NewColumn";
+        final List<String> CONCAT_COLUMNS = Arrays.asList("ConcatenatedColumn1", "ConcatenatedColumn2", "ConcatenatedColumn3");
+        final List<String> ALL_COLUMNS = Arrays.asList("ConcatenatedColumn1", "OtherColumn4", "ConcatenatedColumn2",
+                "OtherColumn5", "ConcatenatedColumn3", "OtherColumn6");
+        final List<Text> COLUMN_VALUES = Arrays.asList(new Text("string1"), new Text("other4"),
+                new Text("string2"), new Text("other5"),
+                new Text("string3"), new Text("other6"));
+        final String NEW_COLUMN_VALUE = "string1 string2 string3";
+
+        Transform transform = new ConcatenateStringColumns(NEW_COLUMN, DELIMITER, CONCAT_COLUMNS);
+        String[] allColumns = ALL_COLUMNS.toArray(new String[ALL_COLUMNS.size()]);
+        Schema schema = new Schema.Builder().addColumnsString(allColumns).build();
+
+        List<String> outputColumns = new ArrayList<>(ALL_COLUMNS);
+        outputColumns.add(NEW_COLUMN);
+        Schema newSchema = transform.transform(schema);
+        Assert.assertEquals(outputColumns, newSchema.getColumnNames());
+
+        List<Writable> input = new ArrayList<>();
+        for (Writable value : COLUMN_VALUES)
+            input.add(value);
+
+        transform.setInputSchema(schema);
+        List<Writable> transformed = transform.map(input);
+        Assert.assertEquals(NEW_COLUMN_VALUE, transformed.get(transformed.size() - 1).toString());
+
+        List<Text> outputColumnValues = new ArrayList<>(COLUMN_VALUES);
+        outputColumnValues.add(new Text(NEW_COLUMN_VALUE));
+        Assert.assertEquals(outputColumnValues, transformed);
+
+        ObjectMapper om = TestUtil.initMapper(new JsonFactory());
+        String s = om.writeValueAsString(transform);
+        Transform transform2 = om.readValue(s, ConcatenateStringColumns.class);
+        Assert.assertEquals(transform, transform2);
+    }
+
+    @Test
+    public void testChangeCaseStringTransform() throws Exception {
+        final String STRING_COLUMN = "StringColumn";
+        final List<String> ALL_COLUMNS = Arrays.asList(STRING_COLUMN, "OtherColumn");
+        final String TEXT_MIXED_CASE = "UPPER lower MiXeD";
+        final String TEXT_UPPER_CASE = TEXT_MIXED_CASE.toUpperCase();
+        final String TEXT_LOWER_CASE = TEXT_MIXED_CASE.toLowerCase();
+
+        Transform transform = new ChangeCaseStringTransform(STRING_COLUMN);
+        String[] allColumns = ALL_COLUMNS.toArray(new String[ALL_COLUMNS.size()]);
+        Schema schema = new Schema.Builder().addColumnsString(allColumns).build();
+        transform.setInputSchema(schema);
+        Schema newSchema = transform.transform(schema);
+        List<String> outputColumns = new ArrayList<>(ALL_COLUMNS);
+        Assert.assertEquals(outputColumns, newSchema.getColumnNames());
+
+        transform = new ChangeCaseStringTransform(STRING_COLUMN, ChangeCaseStringTransform.CaseType.LOWER);
+        transform.setInputSchema(schema);
+        List<Writable> input = new ArrayList<>();
+        input.add(new Text(TEXT_MIXED_CASE));
+        input.add(new Text(TEXT_MIXED_CASE));
+        List<Writable> output = new ArrayList<>();
+        output.add(new Text(TEXT_LOWER_CASE));
+        output.add(new Text(TEXT_MIXED_CASE));
+        List<Writable> transformed = transform.map(input);
+        Assert.assertEquals(transformed.get(0).toString(), TEXT_LOWER_CASE);
+        Assert.assertEquals(transformed, output);
+
+        transform = new ChangeCaseStringTransform(STRING_COLUMN, ChangeCaseStringTransform.CaseType.UPPER);
+        transform.setInputSchema(schema);
+        output.clear();
+        output.add(new Text(TEXT_UPPER_CASE));
+        output.add(new Text(TEXT_MIXED_CASE));
+        transformed = transform.map(input);
+        Assert.assertEquals(transformed.get(0).toString(), TEXT_UPPER_CASE);
+        Assert.assertEquals(transformed, output);
+
+        ObjectMapper om = TestUtil.initMapper(new JsonFactory());
+        String s = om.writeValueAsString(transform);
+        Transform transform2 = om.readValue(s, ChangeCaseStringTransform.class);
+        Assert.assertEquals(transform, transform2);
     }
 
     @Test
@@ -1286,5 +1371,53 @@ public class TestTransforms {
         assertEquals(Collections.emptyList(), t_inplace_trim_m2.mapSequence(exp1));
         assertEquals(Collections.emptyList(), t_newcol_trim_p2.mapSequence(exp1));
         assertEquals(Collections.emptyList(), t_newcol_trim_m2.mapSequence(exp1));
+    }
+
+
+    @Test
+    public void testTextToSequenceExpansionTransform(){
+        List<String> v = Arrays.asList("cat", "dog", "elephant", "fish", "horse", "jaguar");
+
+        Schema s = new Schema.Builder()
+                .addColumnDouble("doublecol")
+                .addColumnString("textcol")
+                .addColumnInteger("intcol")
+                .build();
+
+        String newColName = "idxs";
+
+        Transform t = new TextToIntegerSequenceTransform("textcol", newColName, new DefaultVocabProvider(new DefaultVocabulary(v)));
+        t.setInputSchema(s);
+
+        Schema sOut = t.transform(s);
+
+        assertEquals(3, sOut.numColumns());
+        assertEquals(Arrays.asList(ColumnType.Double, ColumnType.Integer, ColumnType.Integer),sOut.getColumnTypes());
+        assertEquals(Arrays.asList("doublecol", newColName, "intcol"), sOut.getColumnNames());
+
+        List<List<Writable>> seqIn = Collections.singletonList( Arrays.<Writable>asList(new DoubleWritable(1.0),
+                        new Text("a cat, the Dog, and more than one JAGUAR!"), new IntWritable(2)));
+
+        List<List<Writable>> seqOut = t.mapSequence(seqIn);
+
+        List<List<Writable>> expected = Arrays.asList(
+                Arrays.<Writable>asList(new DoubleWritable(1.0), new IntWritable(v.indexOf("cat")), new IntWritable(2)),
+                Arrays.<Writable>asList(new DoubleWritable(1.0), new IntWritable(v.indexOf("dog")), new IntWritable(2)),
+                Arrays.<Writable>asList(new DoubleWritable(1.0), new IntWritable(v.indexOf("jaguar")), new IntWritable(2)));
+
+        assertEquals(expected, seqOut);
+
+
+        //Test multiple step expansion
+        seqIn = Arrays.asList(
+                Arrays.<Writable>asList(new DoubleWritable(1.0), new Text("a cat, the Dog, and more than one JAGUAR!"), new IntWritable(2)),
+                Arrays.<Writable>asList(new DoubleWritable(3.0), new Text("elephant and fish?"), new IntWritable(4)));
+
+        expected = new ArrayList<>(expected);
+        expected.add(Arrays.<Writable>asList(new DoubleWritable(3.0), new IntWritable(v.indexOf("elephant")), new IntWritable(4)));
+        expected.add(Arrays.<Writable>asList(new DoubleWritable(3.0), new IntWritable(v.indexOf("fish")), new IntWritable(4)));
+
+        seqOut = t.mapSequence(seqIn);
+        assertEquals(expected, seqOut);
     }
 }
