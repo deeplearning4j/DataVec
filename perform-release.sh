@@ -27,6 +27,8 @@ done
 mvn versions:set -DallowSnapshots=true -DgenerateBackupPoms=false -DnewVersion=$RELEASE_VERSION
 
 if [[ "${SKIP_BUILD}" == "0" ]]; then
+    source change-spark-versions.sh 1
+    source change-scala-versions.sh 2.11
     mvn clean deploy -Dgpg.executable=gpg2 -DperformRelease -Psonatype-oss-release -DskipTests -DstagingRepositoryId=$STAGING_REPOSITORY
     source change-spark-versions.sh 2
     mvn clean deploy -Dgpg.executable=gpg2 -DperformRelease -Psonatype-oss-release -DskipTests -DstagingRepositoryId=$STAGING_REPOSITORY
