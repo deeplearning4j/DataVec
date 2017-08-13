@@ -17,13 +17,13 @@
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-native</artifactId>
-            <version>${nd4j.version}</version>
+            <version>0.9.1-20170813.073624-50</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-jackson</artifactId>
-            <version>${nd4j.version}</version>
+            <version>0.9.1-20170812.072141-44</version>
         </dependency>
         <dependency>
             <groupId>org.datavec</groupId>

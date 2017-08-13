@@ -554,6 +554,7 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
             </plugin>
+            <!--
             <plugin>
               <groupId>com.lewisd</groupId>
               <artifactId>lint-maven-plugin</artifactId>
@@ -579,7 +580,7 @@
                 </execution>
               </executions>
             </plugin>
-
+            -->
             <plugin>
               <groupId>net.revelc.code.formatter</groupId>
               <artifactId>formatter-maven-plugin</artifactId>
@@ -655,6 +656,11 @@
         <artifactId>junit</artifactId>
         <version>${junit.version}</version>
         <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.nd4j</groupId>
+        <artifactId>jackson</artifactId>
+        <version>0.9.1-20170813.073640-50</version>
       </dependency>
     </dependencies>
 

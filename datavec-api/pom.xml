@@ -62,7 +62,7 @@
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>jackson</artifactId>
-            <version>${nd4j.version}</version>
+            <version>0.9.1-20170813.073640-50</version>
         </dependency>
 
         <dependency>
@@ -92,14 +92,14 @@
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-common</artifactId>
-            <version>${nd4j.version}</version>
+            <version>0.9.1-20170813.073550-50</version>
         </dependency>
 
         <!-- ND4J api, mainly for NDArrayWritable and recognizing an INDArray in UnsafeWritableInjector -->
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-api</artifactId>
-            <version>${nd4j.version}</version>
+            <version>0.9.1-20170813.073737-50</version>
         </dependency>
 
         <dependency>
@@ -125,7 +125,7 @@
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-native</artifactId>
-            <version>${nd4j.version}</version>
+            <version>0.9.1-20170813.073624-50</version>
             <scope>test</scope>
         </dependency>
 

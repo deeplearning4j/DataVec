@@ -42,7 +42,7 @@
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-api</artifactId>
-            <version>${nd4j.version}</version>
+            <version>0.9.1-20170813.073737-50</version>
         </dependency>
     </dependencies>
 
