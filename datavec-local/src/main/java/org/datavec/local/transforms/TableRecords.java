@@ -253,9 +253,9 @@ public class TableRecords {
                         case NotEqual:
                             return new StringNotEqualTo(columnReference, categoricalColumnCondition.getValue());
                         case InSet:
-                            return new StringInSet(columnReference, categoricalColumnCondition.getSet());
+                            return new StringIsIn(columnReference, categoricalColumnCondition.getSet());
                         case NotInSet:
-                            return new StringNotInSet(columnReference, categoricalColumnCondition.getSet());
+                            return new StringIsNotIn(columnReference, categoricalColumnCondition.getSet());
 
                     }
                 case Long:
@@ -287,9 +287,9 @@ public class TableRecords {
                         case NotEqual:
                             return new StringNotEqualTo(columnReference, categoricalColumnCondition2.getValue());
                         case InSet:
-                            return new StringInSet(columnReference, categoricalColumnCondition2.getSet());
+                            return new StringIsIn(columnReference, categoricalColumnCondition2.getSet());
                         case NotInSet:
-                            return new StringNotInSet(columnReference, categoricalColumnCondition2.getSet());
+                            return new StringIsNotIn(columnReference, categoricalColumnCondition2.getSet());
 
                     }
                 case Float:

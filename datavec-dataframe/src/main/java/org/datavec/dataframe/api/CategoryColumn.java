@@ -323,22 +323,12 @@ public class CategoryColumn extends AbstractColumn implements CategoryFilters, C
         return values.isEmpty();
     }
 
+    /**
+     * @deprecated use {@link #isIn(Collection<String>)} instead.  
+     */
+    @Deprecated
     public Selection isInSet(Collection<String> values2) {
-        Selection results = new BitmapBackedSelection();
-        for (String string : values2) {
-            int key = lookupTable.get(string);
-            if (key >= 0) {
-                int i = 0;
-                for (int next : values) {
-                    if (key == next) {
-                        results.add(i);
-                    }
-                    i++;
-                }
-            }
-        }
-
-        return results;
+      return isIn(values2);
     }
 
     public Selection isEqualTo(String string) {
@@ -705,22 +695,47 @@ public class CategoryColumn extends AbstractColumn implements CategoryFilters, C
     }
 
     public Selection isIn(String... strings) {
-        IntArrayList keys = new IntArrayList();
-        for (String string : strings) {
-            int key = lookupTable.get(string);
-            if (key >= 0) {
-                keys.add(key);
-            }
-        }
-
-        int i = 0;
-        Selection results = new BitmapBackedSelection();
-        for (int next : values) {
-            if (keys.contains(next)) {
-                results.add(i);
+      Selection results = new BitmapBackedSelection();
+      for (String string : strings) {
+        int key = lookupTable.get(string);
+        if (key >= 0) {
+          int i = 0;
+          for (int next : values) {
+            if (key == next) {
+              results.add(i);
             }
             i++;
+          }
         }
-        return results;
+      }
+
+      return results;
+    }
+
+    public Selection isIn(Collection<String> strings) {
+      return isIn(strings.toArray(new String[strings.size()]));
+    }
+
+
+    public Selection isNotIn(String... strings) {
+      Selection results = new BitmapBackedSelection();
+      for (String string : strings) {
+        int key = lookupTable.get(string);
+        if (key >= 0) {
+          int i = 0;
+          for (int next : values) {
+            if (key != next) {
+              results.add(i);
+            }
+            i++;
+          }
+        }
+      }
+
+      return results;
+    }
+
+    public Selection isNotIn(Collection<String> strings) {
+      return isNotIn(strings.toArray(new String[strings.size()]));
     }
 }
