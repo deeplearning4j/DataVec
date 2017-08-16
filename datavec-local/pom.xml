@@ -32,7 +32,7 @@
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-native</artifactId>
-            <version>${nd4j.version}</version>
+            <version>0.9.1-20170813.073624-50</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -41,9 +41,9 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.datavec</groupId>
-            <artifactId>datavec-dataframe</artifactId>
-            <version>${project.version}</version>
+            <groupId>tech.tablesaw</groupId>
+            <artifactId>tablesaw-core</artifactId>
+            <version>${tablesaw.version}</version>
         </dependency>
     </dependencies>
 </project>

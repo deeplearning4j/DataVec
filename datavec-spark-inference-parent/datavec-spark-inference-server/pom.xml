@@ -54,7 +54,7 @@
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-base64</artifactId>
-            <version>${nd4j.version}</version>
+            <version>0.9.1-20170813.073657-50</version>
         </dependency>
         <dependency>
             <groupId>com.typesafe.play</groupId>
@@ -85,7 +85,7 @@
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-native</artifactId>
-            <version>${nd4j.version}</version>
+            <version>0.9.1-20170813.073624-50</version>
             <scope>test</scope>
         </dependency>
 
