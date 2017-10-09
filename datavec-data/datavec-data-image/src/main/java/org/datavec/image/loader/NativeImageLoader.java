@@ -28,6 +28,8 @@ import org.nd4j.linalg.api.memory.pointers.PagedPointer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.exception.ND4JIllegalStateException;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.indexing.INDArrayIndex;
+import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.util.ArrayUtil;
 
 import java.io.*;
@@ -550,5 +552,28 @@ public class NativeImageLoader extends BaseImageLoader {
     public INDArray asMatrix(ImageWritable writable) throws IOException {
         Mat image = converter.convert(writable.getFrame());
         return asMatrix(image);
+    }
+
+    /**
+     * Read multipage tiff and load into INDArray
+     *
+     * @param path2tif path to tiff
+     * @return INDArray
+     * @throws IOException
+     */
+    public INDArray asMatrix(String path2tif) throws IOException {
+        PIXA pixa = pixaReadMultipageTiff(path2tif);
+        INDArray data = Nd4j.create(1, pixa.n(), pixa.pix(0).h(), pixa.pix(0).w());
+        INDArray currentD;
+        for (int i = 0; i < pixa.n(); i++) {
+            PIX pix = pixa.pix(i);
+            currentD = asMatrix(convert(pix));
+            pixDestroy(pix);
+            data.put(
+                  new INDArrayIndex[]{NDArrayIndex.all(), NDArrayIndex.point(i),NDArrayIndex.all(),NDArrayIndex.all()},
+                  currentD.get(NDArrayIndex.all(), NDArrayIndex.point(1),NDArrayIndex.all())
+            );
+        }
+        return data;
     }
 }
