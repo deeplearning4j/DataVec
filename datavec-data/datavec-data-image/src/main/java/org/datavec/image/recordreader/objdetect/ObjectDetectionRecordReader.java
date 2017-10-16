@@ -29,12 +29,15 @@ import org.nd4j.linalg.api.concurrency.AffinityManager;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
+import org.datavec.api.records.Record;
+import org.datavec.api.records.metadata.RecordMetaDataImageURI;
+import org.datavec.api.util.files.URIUtil;
+import org.datavec.image.transform.ImageTransform;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.*;
-import org.datavec.image.transform.ImageTransform;
 
 import static org.nd4j.linalg.indexing.NDArrayIndex.all;
 import static org.nd4j.linalg.indexing.NDArrayIndex.point;
@@ -54,6 +57,8 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
     private final int gridW;
     private final int gridH;
     private final ImageObjectLabelProvider labelProvider;
+
+    protected Image currentImage;
 
     /**
      *
@@ -157,6 +162,7 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
             try {
                 this.invokeListeners(imageFile);
                 Image image = this.imageLoader.asImageMatrix(imageFile);
+                this.currentImage = image;
                 Nd4j.getAffinityManager().ensureLocation(image.getImage(), AffinityManager.Location.DEVICE);
 
                 outImg.put(new INDArrayIndex[]{point(exampleNum), all(), all(), all()}, image.getImage());
@@ -214,4 +220,11 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
         return Arrays.<Writable>asList(new NDArrayWritable(outImg), new NDArrayWritable(outLabel));
     }
 
+    @Override
+    public Record nextRecord() {
+        List<Writable> list = next();
+        URI uri = URIUtil.fileToURI(currentFile);
+        return new org.datavec.api.records.impl.Record(list, new RecordMetaDataImageURI(uri, BaseImageRecordReader.class,
+                        currentImage.getOrigC(), currentImage.getOrigH(), currentImage.getOrigW()));
+    }
 }

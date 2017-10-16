@@ -33,6 +33,8 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.datavec.api.records.Record;
+import org.datavec.api.records.metadata.RecordMetaDataImageURI;
 
 import static org.junit.Assert.*;
 
@@ -114,6 +116,14 @@ public class TestObjectDetectionRecordReader {
             assertArrayEquals(new int[]{1, 4 + 2, gH, gW}, lArr.shape());
             assertEquals(expLabels, lArr);
         }
+
+        rr.reset();
+        Record record = rr.nextRecord();
+        RecordMetaDataImageURI metadata = (RecordMetaDataImageURI)record.getMetaData();
+        assertEquals(new File(path, "000012.jpg"), new File(metadata.getURI()));
+        assertEquals(3, metadata.getOrigC());
+        assertEquals((int)origH[0], metadata.getOrigH());
+        assertEquals((int)origW[0], metadata.getOrigW());
     }
 
     //2 images: 000012.jpg and 000019.jpg
