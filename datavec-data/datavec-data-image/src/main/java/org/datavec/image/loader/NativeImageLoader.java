@@ -16,9 +16,7 @@
 package org.datavec.image.loader;
 
 import org.apache.commons.io.IOUtils;
-import org.bytedeco.javacpp.DoublePointer;
-import org.bytedeco.javacpp.FloatPointer;
-import org.bytedeco.javacpp.Pointer;
+import org.bytedeco.javacpp.*;
 import org.bytedeco.javacpp.indexer.*;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.datavec.image.data.ImageWritable;
@@ -193,23 +191,20 @@ public class NativeImageLoader extends BaseImageLoader {
 
     @Override
     public INDArray asMatrix(File f) throws IOException {
-        try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(f))) {
-            return asMatrix(bis);
+        if (f.getPath().endsWith(".tif") ||f.getPath().endsWith(".tiff")){
+            return asMatrix(f.getPath());
+        }else{
+            try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(f))) {
+                return asMatrix(bis);
+            }
         }
+
     }
 
     @Override
     public INDArray asMatrix(InputStream is) throws IOException {
         byte[] bytes = IOUtils.toByteArray(is);
-        Mat image = imdecode(new Mat(bytes), CV_LOAD_IMAGE_ANYDEPTH | CV_LOAD_IMAGE_ANYCOLOR);
-        if (image == null || image.empty()) {
-            PIX pix = pixReadMem(bytes, bytes.length);
-            if (pix == null) {
-                throw new IOException("Could not decode image from input stream");
-            }
-            image = convert(pix);
-            pixDestroy(pix);
-        }
+        Mat image = byte2Mat(bytes);
         INDArray a = asMatrix(image);
         image.deallocate();
         return a;
@@ -370,15 +365,7 @@ public class NativeImageLoader extends BaseImageLoader {
 
     public void asMatrixView(InputStream is, INDArray view) throws IOException {
         byte[] bytes = IOUtils.toByteArray(is);
-        Mat image = imdecode(new Mat(bytes), CV_LOAD_IMAGE_ANYDEPTH | CV_LOAD_IMAGE_ANYCOLOR);
-        if (image == null || image.empty()) {
-            PIX pix = pixReadMem(bytes, bytes.length);
-            if (pix == null) {
-                throw new IOException("Could not decode image from input stream");
-            }
-            image = convert(pix);
-            pixDestroy(pix);
-        }
+        Mat image = byte2Mat(bytes);
         if (image == null)
             throw new RuntimeException();
         asMatrixView(image, view);
@@ -386,6 +373,7 @@ public class NativeImageLoader extends BaseImageLoader {
     }
 
     public void asMatrixView(File f, INDArray view) throws IOException {
+//       only the first image of multipage tiff
         try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(f))) {
             asMatrixView(bis, view);
         }
@@ -518,28 +506,33 @@ public class NativeImageLoader extends BaseImageLoader {
 
 
     /**
-     * Convert a file to a INDArray
+     * Convert a file to a ImageWritable (only the first image for multipage tiff)
      *
      * @param f the image to convert
-     * @return INDArray
+     * @return ImageWritable
      * @throws IOException
      */
     public ImageWritable asWritable(File f) throws IOException {
         try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(f))) {
             byte[] bytes = IOUtils.toByteArray(bis);
-            Mat image = imdecode(new Mat(bytes), CV_LOAD_IMAGE_ANYDEPTH | CV_LOAD_IMAGE_ANYCOLOR);
-            if (image == null || image.empty()) {
-                PIX pix = pixReadMem(bytes, bytes.length);
-                if (pix == null) {
-                    throw new IOException("Could not decode image from input stream");
-                }
-                image = convert(pix);
-                pixDestroy(pix);
-            }
+            Mat image = byte2Mat(bytes);
 
             ImageWritable writable = new ImageWritable(converter.convert(image));
             return writable;
         }
+    }
+
+    private Mat byte2Mat(byte[] bytes) throws IOException {
+        Mat image = imdecode(new Mat(bytes), CV_LOAD_IMAGE_ANYDEPTH | CV_LOAD_IMAGE_ANYCOLOR);
+        if (image == null || image.empty()) {
+            PIX pix = pixReadMem(bytes, bytes.length);
+            if (pix == null) {
+                throw new IOException("Could not decode image from input stream");
+            }
+            image = convert(pix);
+            pixDestroy(pix);
+        }
+        return image;
     }
 
     /**
@@ -561,7 +554,7 @@ public class NativeImageLoader extends BaseImageLoader {
      * @return INDArray
      * @throws IOException
      */
-    public INDArray asMatrix(String path2tif) throws IOException {
+    private INDArray asMatrix(String path2tif) throws IOException {
         PIXA pixa = pixaReadMultipageTiff(path2tif);
         INDArray data = Nd4j.create(1, pixa.n(), pixa.pix(0).h(), pixa.pix(0).w());
         INDArray currentD;
@@ -569,6 +562,7 @@ public class NativeImageLoader extends BaseImageLoader {
             PIX pix = pixa.pix(i);
             currentD = asMatrix(convert(pix));
             pixDestroy(pix);
+            //TODO to change when 16-bit image is supported
             data.put(
                   new INDArrayIndex[]{NDArrayIndex.all(), NDArrayIndex.point(i),NDArrayIndex.all(),NDArrayIndex.all()},
                   currentD.get(NDArrayIndex.all(), NDArrayIndex.point(1),NDArrayIndex.all())

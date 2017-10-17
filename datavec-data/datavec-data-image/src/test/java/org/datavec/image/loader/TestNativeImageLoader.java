@@ -182,7 +182,7 @@ public class TestNativeImageLoader {
         int w4 = 71, h4 = 184, ch4 = 2, pages = 2;
         NativeImageLoader loader4 = new NativeImageLoader(h4, w4, ch4);
         INDArray array6 = loader4.asMatrix(
-              new ClassPathResource("/testimages/mitosis.tif").getFile().getPath());
+              new ClassPathResource("/testimages/mitosis.tif").getFile());
         assertEquals(4, array6.rank());
         assertEquals(1, array6.size(0));
         assertEquals(pages, array6.size(1));
