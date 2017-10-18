@@ -174,21 +174,25 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
 
                 //put the label data into the output label array
                 for (ImageObject io : objectsThisImg) {
+                    double cx = io.getXCenterPixels();
+                    double cy = io.getYCenterPixels();
+                    double W = oW;
+                    double H = oH;
                     if (imageTransform != null) {
-                        float[] pts = imageTransform.query(io.getX1(), io.getY1(), io.getX2(), io.getY2());
+                        float[] pts = imageTransform.query(io.getX1(), io.getY1(), io.getX2(), io.getY2(), (float)oW, (float)oH);
                         io = new ImageObject(Math.round(pts[0]), Math.round(pts[1]), Math.round(pts[2]), Math.round(pts[3]), io.getLabel());
-                        double cx = io.getXCenterPixels();
-                        double cy = io.getYCenterPixels();
-                        if (cx < 0 || cx >= oW || cy < 0 || cy >= oH) {
+                        cx = io.getXCenterPixels();
+                        cy = io.getYCenterPixels();
+                        W = pts[4];
+                        H = pts[5];
+                        if (cx < 0 || cx >= W || cy < 0 || cy >= H) {
                             continue;
                         }
                     }
-                    double cx = io.getXCenterPixels();
-                    double cy = io.getYCenterPixels();
 
-                    double[] cxyPostScaling = ImageUtils.translateCoordsScaleImage(cx, cy, oW, oH, width, height);
-                    double[] tlPost = ImageUtils.translateCoordsScaleImage(io.getX1(), io.getY1(), oW, oH, width, height);
-                    double[] brPost = ImageUtils.translateCoordsScaleImage(io.getX2(), io.getY2(), oW, oH, width, height);
+                    double[] cxyPostScaling = ImageUtils.translateCoordsScaleImage(cx, cy, W, H, width, height);
+                    double[] tlPost = ImageUtils.translateCoordsScaleImage(io.getX1(), io.getY1(), W, H, width, height);
+                    double[] brPost = ImageUtils.translateCoordsScaleImage(io.getX2(), io.getY2(), W, H, width, height);
 
                     //Get grid position for image
                     int imgGridX = (int) (cxyPostScaling[0] / width * gridW);
