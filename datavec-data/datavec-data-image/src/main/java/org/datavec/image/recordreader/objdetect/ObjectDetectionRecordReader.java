@@ -32,8 +32,10 @@ import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.datavec.api.records.Record;
 import org.datavec.api.records.metadata.RecordMetaDataImageURI;
 import org.datavec.api.util.files.URIUtil;
+import org.datavec.api.util.ndarray.RecordConverter;
 import org.datavec.image.transform.ImageTransform;
 
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -74,7 +76,7 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
         this.gridW = gridW;
         this.gridH = gridH;
         this.labelProvider = labelProvider;
-
+        this.appendLabel = labelProvider != null;
     }
 
     /**
@@ -94,6 +96,7 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
         this.gridW = gridW;
         this.gridH = gridH;
         this.labelProvider = labelProvider;
+        this.appendLabel = labelProvider != null;
         this.imageTransform = imageTransform;
     }
 
@@ -169,51 +172,7 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
 
                 List<ImageObject> objectsThisImg = objects.get(exampleNum);
 
-                double oW = image.getOrigW();
-                double oH = image.getOrigH();
-
-                //put the label data into the output label array
-                for (ImageObject io : objectsThisImg) {
-                    double cx = io.getXCenterPixels();
-                    double cy = io.getYCenterPixels();
-                    double W = oW;
-                    double H = oH;
-                    if (imageTransform != null) {
-                        float[] pts = imageTransform.query(io.getX1(), io.getY1(), io.getX2(), io.getY2(), (float)oW, (float)oH);
-                        io = new ImageObject(Math.round(pts[0]), Math.round(pts[1]), Math.round(pts[2]), Math.round(pts[3]), io.getLabel());
-                        cx = io.getXCenterPixels();
-                        cy = io.getYCenterPixels();
-                        W = pts[4];
-                        H = pts[5];
-                        if (cx < 0 || cx >= W || cy < 0 || cy >= H) {
-                            continue;
-                        }
-                    }
-
-                    double[] cxyPostScaling = ImageUtils.translateCoordsScaleImage(cx, cy, W, H, width, height);
-                    double[] tlPost = ImageUtils.translateCoordsScaleImage(io.getX1(), io.getY1(), W, H, width, height);
-                    double[] brPost = ImageUtils.translateCoordsScaleImage(io.getX2(), io.getY2(), W, H, width, height);
-
-                    //Get grid position for image
-                    int imgGridX = (int) (cxyPostScaling[0] / width * gridW);
-                    int imgGridY = (int) (cxyPostScaling[1] / height * gridH);
-
-                    //Convert pixels to grid position, for TL and BR X/Y
-                    tlPost[0] = tlPost[0] / width * gridW;
-                    tlPost[1] = tlPost[1] / height * gridH;
-                    brPost[0] = brPost[0] / width * gridW;
-                    brPost[1] = brPost[1] / height * gridH;
-
-                    //Put TL, BR into label array:
-                    outLabel.putScalar(exampleNum, 0, imgGridY, imgGridX, tlPost[0]);
-                    outLabel.putScalar(exampleNum, 1, imgGridY, imgGridX, tlPost[1]);
-                    outLabel.putScalar(exampleNum, 2, imgGridY, imgGridX, brPost[0]);
-                    outLabel.putScalar(exampleNum, 3, imgGridY, imgGridX, brPost[1]);
-
-                    //Put label class into label array: (one-hot representation)
-                    int labelIdx = labels.indexOf(io.getLabel());
-                    outLabel.putScalar(exampleNum, 4 + labelIdx, imgGridY, imgGridX, 1.0);
-                }
+                label(image, objectsThisImg, outLabel, exampleNum);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -222,6 +181,74 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
         }
 
         return Arrays.<Writable>asList(new NDArrayWritable(outImg), new NDArrayWritable(outLabel));
+    }
+
+    private void label(Image image, List<ImageObject> objectsThisImg, INDArray outLabel, int exampleNum) {
+        double oW = image.getOrigW();
+        double oH = image.getOrigH();
+
+        //put the label data into the output label array
+        for (ImageObject io : objectsThisImg) {
+            double cx = io.getXCenterPixels();
+            double cy = io.getYCenterPixels();
+            double W = oW;
+            double H = oH;
+            if (imageTransform != null) {
+                float[] pts = imageTransform.query(io.getX1(), io.getY1(), io.getX2(), io.getY2(), (float)oW, (float)oH);
+                io = new ImageObject(Math.round(pts[0]), Math.round(pts[1]), Math.round(pts[2]), Math.round(pts[3]), io.getLabel());
+                cx = io.getXCenterPixels();
+                cy = io.getYCenterPixels();
+                W = pts[4];
+                H = pts[5];
+                if (cx < 0 || cx >= W || cy < 0 || cy >= H) {
+                    continue;
+                }
+            }
+
+            double[] cxyPostScaling = ImageUtils.translateCoordsScaleImage(cx, cy, W, H, width, height);
+            double[] tlPost = ImageUtils.translateCoordsScaleImage(io.getX1(), io.getY1(), W, H, width, height);
+            double[] brPost = ImageUtils.translateCoordsScaleImage(io.getX2(), io.getY2(), W, H, width, height);
+
+            //Get grid position for image
+            int imgGridX = (int) (cxyPostScaling[0] / width * gridW);
+            int imgGridY = (int) (cxyPostScaling[1] / height * gridH);
+
+            //Convert pixels to grid position, for TL and BR X/Y
+            tlPost[0] = tlPost[0] / width * gridW;
+            tlPost[1] = tlPost[1] / height * gridH;
+            brPost[0] = brPost[0] / width * gridW;
+            brPost[1] = brPost[1] / height * gridH;
+
+            //Put TL, BR into label array:
+            outLabel.putScalar(exampleNum, 0, imgGridY, imgGridX, tlPost[0]);
+            outLabel.putScalar(exampleNum, 1, imgGridY, imgGridX, tlPost[1]);
+            outLabel.putScalar(exampleNum, 2, imgGridY, imgGridX, brPost[0]);
+            outLabel.putScalar(exampleNum, 3, imgGridY, imgGridX, brPost[1]);
+
+            //Put label class into label array: (one-hot representation)
+            int labelIdx = labels.indexOf(io.getLabel());
+            outLabel.putScalar(exampleNum, 4 + labelIdx, imgGridY, imgGridX, 1.0);
+        }
+    }
+
+    @Override
+    public List<Writable> record(URI uri, DataInputStream dataInputStream) throws IOException {
+        invokeListeners(uri);
+        if (imageLoader == null) {
+            imageLoader = new NativeImageLoader(height, width, channels, imageTransform);
+        }
+        Image image = this.imageLoader.asImageMatrix(dataInputStream);
+        Nd4j.getAffinityManager().ensureLocation(image.getImage(), AffinityManager.Location.DEVICE);
+
+        List<Writable> ret = RecordConverter.toRecord(image.getImage());
+        if (appendLabel) {
+            List<ImageObject> imageObjectsForPath = labelProvider.getImageObjectsForPath(uri.getPath());
+            int nClasses = labels.size();
+            INDArray outLabel = Nd4j.create(1, 4 + nClasses, gridH, gridW);
+            label(image, imageObjectsForPath, outLabel, 0);
+            ret.add(new NDArrayWritable(outLabel));
+        }
+        return ret;
     }
 
     @Override

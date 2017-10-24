@@ -18,6 +18,7 @@ package org.datavec.image.recordreader;
 
 import org.datavec.api.records.Record;
 import org.datavec.api.records.metadata.RecordMetaDataImageURI;
+import org.datavec.api.records.metadata.RecordMetaData;
 import org.datavec.api.records.reader.RecordReader;
 import org.datavec.api.split.FileSplit;
 import org.datavec.api.util.ClassPathResource;
@@ -37,6 +38,7 @@ import org.nd4j.linalg.indexing.functions.Value;
 
 import java.io.File;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -129,6 +131,18 @@ public class TestObjectDetectionRecordReader {
         assertEquals(3, metadata.getOrigC());
         assertEquals((int)origH[0], metadata.getOrigH());
         assertEquals((int)origW[0], metadata.getOrigW());
+
+        List<Record> out = new ArrayList<>();
+        List<RecordMetaData> meta = new ArrayList<>();
+        out.add(record);
+        meta.add(metadata);
+        record = rr.nextRecord();
+        metadata = (RecordMetaDataImageURI)record.getMetaData();
+        out.add(record);
+        meta.add(metadata);
+
+        List<Record> fromMeta = rr.loadFromMetaData(meta);
+        assertEquals(out, fromMeta);
 
         // make sure we don't lose objects just by explicitly resizing
         int i = 0;
