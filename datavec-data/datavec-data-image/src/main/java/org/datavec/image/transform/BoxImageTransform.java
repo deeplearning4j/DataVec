@@ -30,7 +30,9 @@ import static org.bytedeco.javacpp.opencv_core.*;
 
 /**
  * Boxes images to a given width and height without changing their aspect ratios,
- * or resolution, by either padding or cropping them.
+ * or the size of the objects, by either padding or cropping them from the center.
+ * When the width/height of an image is less than the given width/height, it gets
+ * padded in that dimension, otherwise it gets cropped.
  *
  * @author saudet
  */
