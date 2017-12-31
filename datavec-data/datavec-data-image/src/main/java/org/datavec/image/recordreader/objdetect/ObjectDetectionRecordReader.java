@@ -184,8 +184,8 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
     }
 
     private void label(Image image, List<ImageObject> objectsThisImg, INDArray outLabel, int exampleNum) {
-        double oW = image.getOrigW();
-        double oH = image.getOrigH();
+        int oW = image.getOrigW();
+        int oH = image.getOrigH();
 
         //put the label data into the output label array
         for (ImageObject io : objectsThisImg) {
@@ -194,8 +194,35 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
             double W = oW;
             double H = oH;
             if (imageTransform != null) {
-                float[] pts = imageTransform.query(io.getX1(), io.getY1(), io.getX2(), io.getY2(), (float)oW, (float)oH);
-                io = new ImageObject(Math.round(pts[0]), Math.round(pts[1]), Math.round(pts[2]), Math.round(pts[3]), io.getLabel());
+                float[] pts = imageTransform.query(io.getX1(), io.getY1(), io.getX2(), io.getY2(), oW, oH);
+
+                int minX = Math.round(Math.min(pts[0], pts[2]));
+                int maxX = Math.round(Math.max(pts[0], pts[2]));
+                int minY = Math.round(Math.min(pts[1], pts[3]));
+                int maxY = Math.round(Math.max(pts[1], pts[3]));
+
+                if (minX < 0 || maxX < 0 || minY < 0 || maxY < 0) {
+                    throw new IllegalStateException(
+                            String.format(
+                                    "Bad coordinates (negative) after query of transform: %s %s %s %s => %s %s %s %s",
+                                    io.getX1(), io.getY1(), io.getX2(), io.getY2(),
+                                    minX, minY, maxX, maxY
+                            )
+                    );
+                }
+
+                if (minX > oW - 1 || maxX > oW - 1 || minY > oH - 1 || maxY > oH - 1) {
+                    throw new IllegalStateException(
+                            String.format(
+                                    "Bad coordinates (greater or equal than image bounds %s %s) after query of transform: %s %s %s %s => %s %s %s %s",
+                                    oW, oH,
+                                    io.getX1(), io.getY1(), io.getX2(), io.getY2(),
+                                    minX, minY, maxX, maxY
+                            )
+                    );
+                }
+
+                io = new ImageObject(minX, minY, maxX, maxY, io.getLabel());
                 cx = io.getXCenterPixels();
                 cy = io.getYCenterPixels();
                 W = pts[4];
