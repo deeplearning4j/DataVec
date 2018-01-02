@@ -211,33 +211,13 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
                 int minY = Math.round(Math.min(pts[1], pts[3]));
                 int maxY = Math.round(Math.max(pts[1], pts[3]));
 
-                if (minX < 0 || minY < 0 || maxX < 0 || maxY < 0) {
-                    if (minX < 0 || maxX < 0 || minY < 0 || maxY < 0) {
-                        throw new IllegalStateException(
-                                String.format(
-                                        "Bad coordinates (negative) after query of transform: %s %s %s %s => %s %s %s %s",
-                                        io.getX1(), io.getY1(), io.getX2(), io.getY2(),
-                                        minX, minY, maxX, maxY
-                                )
-                        );
-                    }
-                }
-
-                if (minX > W - 1 || maxX > W - 1 || minY > H - 1 || maxY > H - 1) {
-                    throw new IllegalStateException(
-                            String.format(
-                                    "Bad coordinates (greater or equal than transformed image bounds %s %s) after query of transform: %s %s %s %s => %s %s %s %s. Original image bounds: %s %s",
-                                    W, H,
-                                    io.getX1(), io.getY1(), io.getX2(), io.getY2(),
-                                    minX, minY, maxX, maxY,
-                                    oW, oH
-                            )
-                    );
-                }
-
                 io = new ImageObject(minX, minY, maxX, maxY, io.getLabel());
                 cx = io.getXCenterPixels();
                 cy = io.getYCenterPixels();
+
+		if (cx < 0 || cx >= W || cy < 0 || cy >= H) {
+                    continue;
+                }
             }
 
             double[] cxyPostScaling = ImageUtils.translateCoordsScaleImage(cx, cy, W, H, width, height);
