@@ -43,6 +43,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.datavec.image.transform.FlipImageTransform;
+import org.datavec.image.transform.PipelineImageTransform;
 
 import static org.junit.Assert.*;
 
@@ -170,6 +172,21 @@ public class TestObjectDetectionRecordReader {
         i = 0;
         while (rrTransform2.hasNext()) {
             List<Writable> next = rrTransform2.next();
+            INDArray labelArray = ((NDArrayWritable)next.get(1)).get();
+            BooleanIndexing.applyWhere(labelArray, Conditions.notEquals(0), new Value(1));
+            assertEquals(nonzeroCount[i++], labelArray.ravel().sum(1).getInt(0));
+        }
+        
+        //Make sure image flip does not break labels and are correct for new image size dimensions:
+        ImageTransform transform3 = new PipelineImageTransform(
+                new ResizeImageTransform(1024, 2048),
+                new FlipImageTransform(-1)
+        );
+        RecordReader rrTransform3 = new ObjectDetectionRecordReader(2048, 1024, c, gH, gW, lp, transform3);
+        rrTransform3.initialize(new CollectionInputSplit(u));
+        i = 0;
+        while (rrTransform3.hasNext()) {
+            List<Writable> next = rrTransform3.next();
             INDArray labelArray = ((NDArrayWritable)next.get(1)).get();
             BooleanIndexing.applyWhere(labelArray, Conditions.notEquals(0), new Value(1));
             assertEquals(nonzeroCount[i++], labelArray.ravel().sum(1).getInt(0));

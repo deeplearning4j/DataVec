@@ -13,7 +13,6 @@
  *  *    See the License for the specific language governing permissions and
  *  *    limitations under the License.
  */
-
 package org.datavec.image.recordreader.objdetect;
 
 import org.datavec.api.split.FileSplit;
@@ -91,7 +90,7 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
      * @param imageTransform ImageTransform - used to transform image and coordinates
      */
     public ObjectDetectionRecordReader(int height, int width, int channels, int gridH, int gridW,
-                ImageObjectLabelProvider labelProvider, ImageTransform imageTransform) {
+            ImageObjectLabelProvider labelProvider, ImageTransform imageTransform) {
         super(height, width, channels, null);
         this.gridW = gridW;
         this.gridH = gridH;
@@ -124,8 +123,9 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
                 }
             }
             iter = new FileFromPathIterator(inputSplit.locationsPathIterator()); //This handles randomization internally if necessary
-        } else
+        } else {
             throw new IllegalArgumentException("No path locations found in the split.");
+        }
 
         if (split instanceof FileSplit) {
             //remove the root directory
@@ -151,7 +151,6 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
                 objects.add(labelProvider.getImageObjectsForPath(f.getPath()));
             }
         }
-
 
         int nClasses = labels.size();
 
@@ -187,14 +186,19 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
         int oW = image.getOrigW();
         int oH = image.getOrigH();
 
+        int W = oW;
+        int H = oH;
+        
         //put the label data into the output label array
         for (ImageObject io : objectsThisImg) {
             double cx = io.getXCenterPixels();
             double cy = io.getYCenterPixels();
-            double W = oW;
-            double H = oH;
             if (imageTransform != null) {
-                float[] pts = imageTransform.query(io.getX1(), io.getY1(), io.getX2(), io.getY2(), oW, oH);
+                int[] shape = image.getImage().shape();
+                H = shape[2];
+                W = shape[3];
+                
+                float[] pts = imageTransform.query(io.getX1(), io.getY1(), io.getX2(), io.getY2());
 
                 int minX = Math.round(Math.min(pts[0], pts[2]));
                 int maxX = Math.round(Math.max(pts[0], pts[2]));
@@ -211,13 +215,14 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
                     );
                 }
 
-                if (minX > oW - 1 || maxX > oW - 1 || minY > oH - 1 || maxY > oH - 1) {
+                if (minX > W - 1 || maxX > W - 1 || minY > H - 1 || maxY > H - 1) {
                     throw new IllegalStateException(
                             String.format(
-                                    "Bad coordinates (greater or equal than image bounds %s %s) after query of transform: %s %s %s %s => %s %s %s %s",
-                                    oW, oH,
+                                    "Bad coordinates (greater or equal than transformed image bounds %s %s) after query of transform: %s %s %s %s => %s %s %s %s. Original image bounds: %s %s",
+                                    W, H,
                                     io.getX1(), io.getY1(), io.getX2(), io.getY2(),
-                                    minX, minY, maxX, maxY
+                                    minX, minY, maxX, maxY,
+                                    oW, oH
                             )
                     );
                 }
@@ -225,11 +230,6 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
                 io = new ImageObject(minX, minY, maxX, maxY, io.getLabel());
                 cx = io.getXCenterPixels();
                 cy = io.getYCenterPixels();
-                W = pts[4];
-                H = pts[5];
-                if (cx < 0 || cx >= W || cy < 0 || cy >= H) {
-                    continue;
-                }
             }
 
             double[] cxyPostScaling = ImageUtils.translateCoordsScaleImage(cx, cy, W, H, width, height);
@@ -283,6 +283,6 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
         List<Writable> list = next();
         URI uri = URIUtil.fileToURI(currentFile);
         return new org.datavec.api.records.impl.Record(list, new RecordMetaDataImageURI(uri, BaseImageRecordReader.class,
-                        currentImage.getOrigC(), currentImage.getOrigH(), currentImage.getOrigW()));
+                currentImage.getOrigC(), currentImage.getOrigH(), currentImage.getOrigW()));
     }
 }
