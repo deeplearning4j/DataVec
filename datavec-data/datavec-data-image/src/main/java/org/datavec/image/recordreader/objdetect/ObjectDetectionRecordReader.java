@@ -39,6 +39,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.*;
+import org.bytedeco.javacv.Frame;
+import org.datavec.image.data.ImageWritable;
 
 import static org.nd4j.linalg.indexing.NDArrayIndex.all;
 import static org.nd4j.linalg.indexing.NDArrayIndex.point;
@@ -188,16 +190,20 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
 
         int W = oW;
         int H = oH;
-        
+
         //put the label data into the output label array
         for (ImageObject io : objectsThisImg) {
             double cx = io.getXCenterPixels();
             double cy = io.getYCenterPixels();
             if (imageTransform != null) {
-                int[] shape = image.getImage().shape();
-                H = shape[2];
-                W = shape[3];
-                
+                //We have to figure out if the image transform is resizing the image,
+                //since the NativeImageLoader does resizing and transform at once, this is the only way to do it:
+                ImageWritable dummyImage = new ImageWritable(new Frame(oW, oH, 8, image.getOrigC()));
+                ImageWritable transformedDummyImage = imageTransform.transform(dummyImage);
+
+                W = transformedDummyImage.getFrame().imageWidth;
+                H = transformedDummyImage.getFrame().imageHeight;
+
                 float[] pts = imageTransform.query(io.getX1(), io.getY1(), io.getX2(), io.getY2());
 
                 int minX = Math.round(Math.min(pts[0], pts[2]));
@@ -205,14 +211,16 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
                 int minY = Math.round(Math.min(pts[1], pts[3]));
                 int maxY = Math.round(Math.max(pts[1], pts[3]));
 
-                if (minX < 0 || maxX < 0 || minY < 0 || maxY < 0) {
-                    throw new IllegalStateException(
-                            String.format(
-                                    "Bad coordinates (negative) after query of transform: %s %s %s %s => %s %s %s %s",
-                                    io.getX1(), io.getY1(), io.getX2(), io.getY2(),
-                                    minX, minY, maxX, maxY
-                            )
-                    );
+                if (minX < 0 || minY < 0 || maxX < 0 || maxY < 0) {
+                    if (minX < 0 || maxX < 0 || minY < 0 || maxY < 0) {
+                        throw new IllegalStateException(
+                                String.format(
+                                        "Bad coordinates (negative) after query of transform: %s %s %s %s => %s %s %s %s",
+                                        io.getX1(), io.getY1(), io.getX2(), io.getY2(),
+                                        minX, minY, maxX, maxY
+                                )
+                        );
+                    }
                 }
 
                 if (minX > W - 1 || maxX > W - 1 || minY > H - 1 || maxY > H - 1) {

@@ -179,7 +179,7 @@ public class TestObjectDetectionRecordReader {
         
         //Make sure image flip does not break labels and are correct for new image size dimensions:
         ImageTransform transform3 = new PipelineImageTransform(
-                new ResizeImageTransform(1024, 2048),
+                new ResizeImageTransform(2048, 4096),
                 new FlipImageTransform(-1)
         );
         RecordReader rrTransform3 = new ObjectDetectionRecordReader(2048, 1024, c, gH, gW, lp, transform3);
@@ -187,6 +187,18 @@ public class TestObjectDetectionRecordReader {
         i = 0;
         while (rrTransform3.hasNext()) {
             List<Writable> next = rrTransform3.next();
+            INDArray labelArray = ((NDArrayWritable)next.get(1)).get();
+            BooleanIndexing.applyWhere(labelArray, Conditions.notEquals(0), new Value(1));
+            assertEquals(nonzeroCount[i++], labelArray.ravel().sum(1).getInt(0));
+        }
+        
+        //Test that doing a downscale with the native image loader directly instead of a transform does not cause an exception:
+        ImageTransform transform4 = new FlipImageTransform(-1);
+        RecordReader rrTransform4 = new ObjectDetectionRecordReader(128, 128, c, gH, gW, lp, transform4);
+        rrTransform4.initialize(new CollectionInputSplit(u));
+        i = 0;
+        while (rrTransform4.hasNext()) {
+            List<Writable> next = rrTransform4.next();
             INDArray labelArray = ((NDArrayWritable)next.get(1)).get();
             BooleanIndexing.applyWhere(labelArray, Conditions.notEquals(0), new Value(1));
             assertEquals(nonzeroCount[i++], labelArray.ravel().sum(1).getInt(0));
