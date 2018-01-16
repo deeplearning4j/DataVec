@@ -30,12 +30,12 @@ import java.util.Random;
  * @author saudet
  */
 @NoArgsConstructor
-@JsonIgnoreProperties({"converter"})
+@JsonIgnoreProperties({"converter", "currentImage"})
 public abstract class BaseImageTransform<F> implements ImageTransform {
 
     protected Random random;
     protected FrameConverter<F> converter;
-    protected ImageWritable lastImage;
+    protected ImageWritable currentImage;
 
     protected BaseImageTransform(Random random) {
         this.random = random;
@@ -48,7 +48,7 @@ public abstract class BaseImageTransform<F> implements ImageTransform {
 
     @Override
     public final ImageWritable transform(ImageWritable image, Random random) {
-        return lastImage = doTransform(image, random);
+        return currentImage = doTransform(image, random);
     }
 
     protected abstract ImageWritable doTransform(ImageWritable image, Random random);
@@ -60,6 +60,6 @@ public abstract class BaseImageTransform<F> implements ImageTransform {
 
     @Override
     public ImageWritable getCurrentImage() {
-        return lastImage;
+        return currentImage;
     }
 }
