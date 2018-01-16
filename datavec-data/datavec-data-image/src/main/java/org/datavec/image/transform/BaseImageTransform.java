@@ -35,18 +35,31 @@ public abstract class BaseImageTransform<F> implements ImageTransform {
 
     protected Random random;
     protected FrameConverter<F> converter;
+    protected ImageWritable lastImage;
 
     protected BaseImageTransform(Random random) {
         this.random = random;
     }
 
     @Override
-    public ImageWritable transform(ImageWritable image) {
+    public final ImageWritable transform(ImageWritable image) {
         return transform(image, random);
     }
 
     @Override
+    public final ImageWritable transform(ImageWritable image, Random random) {
+        return lastImage = doTransform(image, random);
+    }
+
+    protected abstract ImageWritable doTransform(ImageWritable image, Random random);
+
+    @Override
     public float[] query(float... coordinates) {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ImageWritable getCurrentImage() {
+        return lastImage;
     }
 }

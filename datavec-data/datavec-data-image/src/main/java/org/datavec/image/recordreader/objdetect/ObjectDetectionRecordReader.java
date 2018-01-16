@@ -39,8 +39,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.*;
-import org.datavec.api.conf.Configuration;
-import org.datavec.image.transform.ProxyImageTransform;
 
 import static org.nd4j.linalg.indexing.NDArrayIndex.all;
 import static org.nd4j.linalg.indexing.NDArrayIndex.point;
@@ -98,7 +96,7 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
         this.gridH = gridH;
         this.labelProvider = labelProvider;
         this.appendLabel = labelProvider != null;
-        this.imageTransform = wrapImageTransform(imageTransform);
+        this.imageTransform = imageTransform;
     }
 
     @Override
@@ -138,22 +136,6 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
         //To ensure consistent order for label assignment (irrespective of file iteration order), we want to sort the list of labels
         labels = new ArrayList<>(labelSet);
         Collections.sort(labels);
-    }
-
-    @Override
-    public void initialize(InputSplit split, ImageTransform imageTransform) throws IOException {
-        super.initialize(split, wrapImageTransform(imageTransform));
-    }
-
-    @Override
-    public void initialize(Configuration conf, InputSplit split, ImageTransform imageTransform) throws IOException, InterruptedException {
-        super.initialize(conf, split, wrapImageTransform(imageTransform));
-    }
-
-    private static ProxyImageTransform wrapImageTransform(ImageTransform transform) {
-        return transform != null
-                ? new ProxyImageTransform(transform)
-                : null;
     }
 
     @Override
@@ -212,8 +194,8 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
             double cx = io.getXCenterPixels();
             double cy = io.getYCenterPixels();
             if (imageTransform != null) {
-                W = ((ProxyImageTransform) imageTransform).getImageWidthAfterTransform();
-                H = ((ProxyImageTransform) imageTransform).getImageHeightAfterTransform();
+                W = imageTransform.getCurrentImage().getWidth();
+                H = imageTransform.getCurrentImage().getHeight();
 
                 float[] pts = imageTransform.query(io.getX1(), io.getY1(), io.getX2(), io.getY2());
 

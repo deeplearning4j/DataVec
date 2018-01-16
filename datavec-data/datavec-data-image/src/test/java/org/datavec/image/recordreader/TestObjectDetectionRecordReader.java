@@ -161,6 +161,8 @@ public class TestObjectDetectionRecordReader {
         i = 0;
         while (rrTransform.hasNext()) {
             List<Writable> next = rrTransform.next();
+            assertEquals(37, transform.getCurrentImage().getWidth());
+            assertEquals(42, transform.getCurrentImage().getHeight());
             INDArray labelArray = ((NDArrayWritable)next.get(1)).get();
             BooleanIndexing.applyWhere(labelArray, Conditions.notEquals(0), new Value(1));
             assertEquals(nonzeroCount[i++], labelArray.ravel().sum(1).getInt(0));
@@ -172,6 +174,8 @@ public class TestObjectDetectionRecordReader {
         i = 0;
         while (rrTransform2.hasNext()) {
             List<Writable> next = rrTransform2.next();
+            assertEquals(1024, transform2.getCurrentImage().getWidth());
+            assertEquals(2048, transform2.getCurrentImage().getHeight());
             INDArray labelArray = ((NDArrayWritable)next.get(1)).get();
             BooleanIndexing.applyWhere(labelArray, Conditions.notEquals(0), new Value(1));
             assertEquals(nonzeroCount[i++], labelArray.ravel().sum(1).getInt(0));
@@ -199,6 +203,10 @@ public class TestObjectDetectionRecordReader {
         i = 0;
         while (rrTransform4.hasNext()) {
             List<Writable> next = rrTransform4.next();
+            
+            assertEquals((int) origW[i], transform4.getCurrentImage().getWidth());
+            assertEquals((int) origH[i], transform4.getCurrentImage().getHeight());
+            
             INDArray labelArray = ((NDArrayWritable)next.get(1)).get();
             BooleanIndexing.applyWhere(labelArray, Conditions.notEquals(0), new Value(1));
             assertEquals(nonzeroCount[i++], labelArray.ravel().sum(1).getInt(0));
