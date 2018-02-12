@@ -28,10 +28,16 @@ public class FastFourierTransform {
     /**
      * Get the frequency intensities
      *
-     * @param amplitudes real-valued amplitudes of the signal
+     * @param amplitudes amplitudes of the signal. Format depends on value of complex
+     * @param complex if true, amplitudes is assumed to be complex interlaced (re = even, im = odd), if false amplitudes
+     *                are assumed to be real valued.
      * @return intensities of each frequency unit: mag[frequency_unit]=intensity
      */
-    public double[] getMagnitudesForReal(double[] amplitudes) {
+    public double[] getMagnitudes(double[] amplitudes, boolean complex) {
+
+        if(complex) {
+            return getMagnitudes(amplitudes);
+        }
 
         // FFT expects complex input where even indexes are real parts
         // and odd indexes are img parts.
@@ -43,7 +49,7 @@ public class FastFourierTransform {
             amplitudesAsComplex[j] = amplitudes[j / 2];
             amplitudesAsComplex[j + 1] = 0;
         }
-        return getMagnitudesForComplex(amplitudesAsComplex);
+        return getMagnitudes(amplitudesAsComplex);
     }
 
     /**
@@ -52,7 +58,7 @@ public class FastFourierTransform {
      * @param amplitudes complex-valued signal to transform. Even indexes are real and odd indexes are img
      * @return intensities of each frequency unit: mag[frequency_unit]=intensity
      */
-    public double[] getMagnitudesForComplex(double[] amplitudes) {
+    public double[] getMagnitudes(double[] amplitudes) {
 
         int sampleSize = amplitudes.length;
 
