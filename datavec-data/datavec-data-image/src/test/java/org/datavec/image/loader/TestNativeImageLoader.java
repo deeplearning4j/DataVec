@@ -181,6 +181,7 @@ public class TestNativeImageLoader {
         assertEquals(h3, array5.size(2));
         assertEquals(w3, array5.size(3));
 
+
         Mat mat = loader3.asMat(array5);
         assertEquals(w3, mat.cols());
         assertEquals(h3, mat.rows());
@@ -196,6 +197,17 @@ public class TestNativeImageLoader {
         Java2DNativeImageLoader loader4 = new Java2DNativeImageLoader();
         BufferedImage img12 = loader4.asBufferedImage(array1);
         assertEquals(array1, loader4.asMatrix(img12));
+
+        int w4 = 100, h4 = 238, ch4 = 2, pages = 4;
+        NativeImageLoader loader5 = new NativeImageLoader(h4, w4, ch4);
+
+        INDArray array6 = loader5.asMatrix(
+              new ClassPathResource("/testimages2/mitosis.tif").getFile());
+        assertEquals(4, array6.rank());
+        assertEquals(1, array6.size(0));
+        assertEquals(pages, array6.size(1));
+        assertEquals(h4, array6.size(2));
+        assertEquals(w4, array6.size(3));
     }
 
     @Test
