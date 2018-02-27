@@ -49,6 +49,12 @@
             <artifactId>javacv</artifactId>
             <version>${javacv.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.github.wendykierp</groupId>
+            <artifactId>JTransforms</artifactId>
+            <version>${jtransforms.version}</version>
+            <classifier>with-dependencies</classifier>
+        </dependency>
 
         <dependency>
             <groupId>com.github.wendykierp</groupId>
