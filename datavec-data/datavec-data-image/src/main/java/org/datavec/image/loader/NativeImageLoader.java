@@ -702,7 +702,7 @@ public class NativeImageLoader extends BaseImageLoader {
             //TODO to change when 16-bit image is supported
             data.put(
                   new INDArrayIndex[]{NDArrayIndex.all(), NDArrayIndex.point(i),NDArrayIndex.all(),NDArrayIndex.all()},
-                  currentD.get(NDArrayIndex.all(), NDArrayIndex.point(1),NDArrayIndex.all())
+                  currentD.get(NDArrayIndex.all(), NDArrayIndex.all(),NDArrayIndex.all())
             );
         }
 

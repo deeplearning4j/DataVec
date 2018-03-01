@@ -198,7 +198,7 @@ public class TestNativeImageLoader {
         BufferedImage img12 = loader4.asBufferedImage(array1);
         assertEquals(array1, loader4.asMatrix(img12));
 
-        int w4 = 100, h4 = 238, ch4 = 2, pages = 4;
+        int w4 = 100, h4 = 238, ch4 = 1, pages = 4;
         NativeImageLoader loader5 = new NativeImageLoader(h4, w4, ch4);
 
         INDArray array6 = loader5.asMatrix(
