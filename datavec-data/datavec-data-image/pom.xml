@@ -26,6 +26,8 @@
     <artifactId>datavec-data-image</artifactId>
 
     <dependencies>
+
+
         <dependency>
             <groupId>org.datavec</groupId>
             <artifactId>datavec-api</artifactId>
