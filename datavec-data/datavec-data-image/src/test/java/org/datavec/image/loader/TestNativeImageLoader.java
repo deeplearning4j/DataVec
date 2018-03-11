@@ -26,6 +26,7 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.util.Random;
 
 import static org.bytedeco.javacpp.lept.*;
@@ -96,6 +97,21 @@ public class TestNativeImageLoader {
         assertEquals(32, mat.cols());
         assertEquals(32, mat.rows());
         assertEquals(CV_8UC4, mat.type());
+
+        int w4 = 100, h4 = 238, ch4 = 1, pages = 4;
+        NativeImageLoader loader5 = new NativeImageLoader(h4, w4, ch4);
+        INDArray array6 = null;
+        try {
+            array6 = loader5.asMatrix(
+						new ClassPathResource("/testimages2/mitosis.tif").getFile());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        assertEquals(4, array6.rank());
+        assertEquals(1, array6.size(0));
+        assertEquals(pages, array6.size(1));
+        assertEquals(h4, array6.size(2));
+        assertEquals(w4, array6.size(3));
     }
 
     @Test
