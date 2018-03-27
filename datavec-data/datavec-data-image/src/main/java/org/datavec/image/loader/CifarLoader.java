@@ -20,6 +20,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.bytedeco.javacpp.opencv_core;
 import org.bytedeco.javacv.OpenCVFrameConverter;
+import org.nd4j.linalg.api.memory.MemoryWorkspace;
+import org.nd4j.linalg.memory.abstracts.Nd4jWorkspace;
 import org.nd4j.linalg.primitives.Pair;
 import org.datavec.image.data.ImageWritable;
 import org.datavec.image.transform.ColorConversionTransform;
@@ -217,10 +219,13 @@ public class CifarLoader extends NativeImageLoader implements Serializable {
             defineLabels();
 
         if (useSpecialPreProcessCifar && train && !cifarProcessedFilesExists()) {
-            for (int i = fileNum + 1; i <= (TRAINFILENAMES.length); i++) {
-                inputStream = trainInputStream;
-                DataSet result = convertDataSet(numToConvertDS);
-                result.save(new File(trainFilesSerialized + i + ".ser"));
+            try(MemoryWorkspace ws = Nd4j.getWorkspaceManager().scopeOutOfWorkspaces()) {
+                //Scope out, to avoid allocating everything in the WS
+                for (int i = fileNum + 1; i <= (TRAINFILENAMES.length); i++) {
+                    inputStream = trainInputStream;
+                    DataSet result = convertDataSet(numToConvertDS);
+                    result.save(new File(trainFilesSerialized + i + ".ser"));
+                }
             }
             //            for (int i = 1; i <= (TRAINFILENAMES.length); i++){
             //                normalizeCifar(new File(trainFilesSerialized + i + ".ser"));
@@ -348,8 +353,7 @@ public class CifarLoader extends NativeImageLoader implements Serializable {
         Pair<INDArray, opencv_core.Mat> matConversion;
         byte[] byteFeature = new byte[BYTEFILELEN];
 
-        try {
-//            while (inputStream.read(byteFeature) != -1 && batchNumCount != num) {
+        try (MemoryWorkspace ws = Nd4j.getWorkspaceManager().scopeOutOfWorkspaces()) {
             while (batchNumCount != num && inputStream.read(byteFeature) != -1 ) {
                 matConversion = convertMat(byteFeature);
                 try {
@@ -368,32 +372,36 @@ public class CifarLoader extends NativeImageLoader implements Serializable {
             return new DataSet();
         }
 
-        DataSet result = DataSet.merge(dataSets);
+        DataSet result;
+        try(MemoryWorkspace ws = Nd4j.getWorkspaceManager().scopeOutOfWorkspaces()) {
 
-        double uTempMean, vTempMean;
-        for (DataSet data : result) {
-            try {
-                if (useSpecialPreProcessCifar) {
-                    INDArray uChannel = data.getFeatures().tensorAlongDimension(1, new int[] {0, 2, 3});
-                    INDArray vChannel = data.getFeatures().tensorAlongDimension(2, new int[] {0, 2, 3});
-                    uTempMean = uChannel.meanNumber().doubleValue();
-                    // TODO INDArray.var result is incorrect based on dimensions passed in thus using manual
-                    uStd += varManual(uChannel, uTempMean);
-                    uMean += uTempMean;
-                    vTempMean = vChannel.meanNumber().doubleValue();
-                    vStd += varManual(vChannel, vTempMean);
-                    vMean += vTempMean;
-                    data.setFeatures(data.getFeatureMatrix().div(255));
-                } else {
-                    // normalize if just input stream and not special preprocess
-                    data.setFeatures(data.getFeatureMatrix().div(255));
+            result = DataSet.merge(dataSets);
+
+            double uTempMean, vTempMean;
+            for (DataSet data : result) {
+                try {
+                    if (useSpecialPreProcessCifar) {
+                        INDArray uChannel = data.getFeatures().tensorAlongDimension(1, new int[]{0, 2, 3});
+                        INDArray vChannel = data.getFeatures().tensorAlongDimension(2, new int[]{0, 2, 3});
+                        uTempMean = uChannel.meanNumber().doubleValue();
+                        // TODO INDArray.var result is incorrect based on dimensions passed in thus using manual
+                        uStd += varManual(uChannel, uTempMean);
+                        uMean += uTempMean;
+                        vTempMean = vChannel.meanNumber().doubleValue();
+                        vStd += varManual(vChannel, vTempMean);
+                        vMean += vTempMean;
+                        data.setFeatures(data.getFeatureMatrix().div(255));
+                    } else {
+                        // normalize if just input stream and not special preprocess
+                        data.setFeatures(data.getFeatureMatrix().div(255));
+                    }
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalStateException("The number of channels must be 3 to special preProcess Cifar with.");
                 }
-            } catch (IllegalArgumentException e) {
-                throw new IllegalStateException("The number of channels must be 3 to special preProcess Cifar with.");
             }
+            if (shuffle && num > 1)
+                result.shuffle(seed);
         }
-        if (shuffle && num > 1)
-            result.shuffle(seed);
         return result;
     }
 
