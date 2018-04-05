@@ -26,8 +26,9 @@ import java.util.List;
  */
 @AllArgsConstructor
 public class TransformProcessSequenceRecordReader implements SequenceRecordReader {
-    private SequenceRecordReader sequenceRecordReader;
-    private TransformProcess transformProcess;
+
+    protected SequenceRecordReader sequenceRecordReader;
+    protected TransformProcess transformProcess;
 
 
 
@@ -65,7 +66,7 @@ public class TransformProcessSequenceRecordReader implements SequenceRecordReade
     }
 
     @Override
-    public List<Writable> next(int num) {
+    public List<List<Writable>> next(int num) {
         throw new UnsupportedOperationException();
     }
 

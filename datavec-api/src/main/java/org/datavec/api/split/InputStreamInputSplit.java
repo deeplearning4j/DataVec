@@ -16,10 +16,11 @@
 
 package org.datavec.api.split;
 
-import org.datavec.api.writable.WritableType;
-
-import java.io.*;
+import java.io.File;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 
@@ -70,6 +71,48 @@ public class InputStreamInputSplit implements InputSplit {
 
     public InputStreamInputSplit(InputStream is) {
         this.is = is;
+        this.location = new URI[0];
+    }
+
+    @Override
+    public boolean canWriteToLocation(URI location) {
+        return false;
+    }
+
+    @Override
+    public String addNewLocation() {
+        return null;
+    }
+
+    @Override
+    public String addNewLocation(String location) {
+        return null;
+    }
+
+    @Override
+    public void updateSplitLocations(boolean reset) {
+
+    }
+
+    @Override
+    public boolean needsBootstrapForWrite() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void bootStrapForWrite() {
+        throw new UnsupportedOperationException();
+
+    }
+
+    @Override
+    public OutputStream openOutputStreamFor(String location) throws Exception {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public InputStream openInputStreamFor(String location) throws Exception {
+        return is;
     }
 
     @Override
@@ -89,31 +132,28 @@ public class InputStreamInputSplit implements InputSplit {
 
     @Override
     public Iterator<String> locationsPathIterator() {
-        return Collections.singletonList(location[0].getPath()).iterator();
+        if(location.length >= 1)
+            return Collections.singletonList(location[0].getPath()).iterator();
+        return Arrays.asList("").iterator();
     }
 
     @Override
     public void reset() {
-        //No op
         if(!resetSupported()) {
             throw new UnsupportedOperationException("Reset not supported from streams");
+        }
+        try {
+            is = openInputStreamFor(location[0].getPath());
+        } catch (Exception e){
+            throw new RuntimeException(e);
         }
     }
 
     @Override
     public boolean resetSupported() {
-        return location != null;
+        return location != null && location.length > 0;
     }
 
-    @Override
-    public void write(DataOutput out) throws IOException {
-
-    }
-
-    @Override
-    public void readFields(DataInput in) throws IOException {
-
-    }
 
     public InputStream getIs() {
         return is;
@@ -123,33 +163,4 @@ public class InputStreamInputSplit implements InputSplit {
         this.is = is;
     }
 
-    @Override
-    public double toDouble() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public float toFloat() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int toInt() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long toLong() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public WritableType getType() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void writeType(DataOutput out) throws IOException {
-        throw new UnsupportedOperationException();
-    }
 }

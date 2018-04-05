@@ -17,19 +17,89 @@
 package org.datavec.api.split;
 
 
-import org.datavec.api.writable.Writable;
-
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.util.Iterator;
 
 /**
- * An input split
+ * An input split.
+ * Basically, a list of loadable locations
+ * exposed as an iterator.
  *
  *
  * @author Adam Gibson
  */
-public interface InputSplit extends Writable {
+public interface InputSplit  {
 
+
+    /**
+     * Returns true if the given uri
+     * can be written to
+     * @param location the location to determine
+     * @return
+     */
+    boolean canWriteToLocation(URI location);
+
+    /**
+     * Add a new location with the name generated
+     *  by this input split/
+     */
+    String addNewLocation();
+
+    /**
+     * Add a new location to this input split
+     * (this  may do anything from updating an in memory location
+     * to creating a new file)
+     * @param location the location to add
+     */
+    String addNewLocation(String location);
+
+    /**
+     * Refreshes the split locations
+     * if needed in memory.
+     * (Think a few file gets added)
+     * @param reset
+     */
+    void updateSplitLocations(boolean reset);
+
+
+    /**
+     * Returns true if this {@link InputSplit}
+     * needs bootstrapping for writing.
+     * A simple example of needing bootstrapping is for
+     * {@link FileSplit} where there is only a directory
+     * existing, but no file to write to
+     * @return true if this input split needs bootstrapping for
+     * writing to or not
+     */
+    boolean needsBootstrapForWrite();
+
+    /**
+     * Bootstrap this input split for writing.
+     * This is for use with {@link org.datavec.api.records.writer.RecordWriter}
+     */
+    void bootStrapForWrite();
+
+    /**
+     * Open an {@link OutputStream}
+     * for the given location.
+     * Note that the user is responsible for closing
+     * the associated output stream.
+     * @param location the location to open the output stream for
+     * @return the output input stream
+     */
+    OutputStream openOutputStreamFor(String location) throws Exception;
+
+    /**
+     * Open an {@link InputStream}
+     * for the given location.
+     * Note that the user is responsible for closing
+     * the associated input stream.
+     * @param location the location to open the input stream for
+     * @return the opened input stream
+     */
+    InputStream openInputStreamFor(String location) throws Exception;
 
     /**
      *  Length of the split
@@ -43,8 +113,16 @@ public interface InputSplit extends Writable {
      */
     URI[] locations();
 
+    /**
+     *
+     * @return
+     */
     Iterator<URI> locationsIterator();
 
+    /**
+     *
+     * @return
+     */
     Iterator<String> locationsPathIterator();
 
     /**

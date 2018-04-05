@@ -20,6 +20,7 @@ import org.datavec.api.split.InputSplit;
 import org.datavec.api.util.files.FileFromPathIterator;
 import org.datavec.api.writable.NDArrayWritable;
 import org.datavec.api.writable.Writable;
+import org.datavec.api.writable.batch.NDArrayRecordBatch;
 import org.datavec.image.data.Image;
 import org.datavec.image.loader.NativeImageLoader;
 import org.datavec.image.recordreader.BaseImageRecordReader;
@@ -71,7 +72,7 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
      * @param labelProvider ImageObjectLabelProvider - used to look up which objects are in each image
      */
     public ObjectDetectionRecordReader(int height, int width, int channels, int gridH, int gridW, ImageObjectLabelProvider labelProvider) {
-        super(height, width, channels, null);
+        super(height, width, channels, null, null);
         this.gridW = gridW;
         this.gridH = gridH;
         this.labelProvider = labelProvider;
@@ -91,7 +92,7 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
      */
     public ObjectDetectionRecordReader(int height, int width, int channels, int gridH, int gridW,
             ImageObjectLabelProvider labelProvider, ImageTransform imageTransform) {
-        super(height, width, channels, null);
+        super(height, width, channels, null, null);
         this.gridW = gridW;
         this.gridH = gridH;
         this.labelProvider = labelProvider;
@@ -101,7 +102,7 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
 
     @Override
     public List<Writable> next() {
-        return next(1);
+        return next(1).get(0);
     }
 
     @Override
@@ -139,7 +140,7 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
     }
 
     @Override
-    public List<Writable> next(int num) {
+    public List<List<Writable>> next(int num) {
         List<File> files = new ArrayList<>(num);
         List<List<ImageObject>> objects = new ArrayList<>(num);
 
@@ -179,7 +180,7 @@ public class ObjectDetectionRecordReader extends BaseImageRecordReader {
             exampleNum++;
         }
 
-        return Arrays.<Writable>asList(new NDArrayWritable(outImg), new NDArrayWritable(outLabel));
+        return new NDArrayRecordBatch(Arrays.asList(outImg, outLabel));
     }
 
     private void label(Image image, List<ImageObject> objectsThisImg, INDArray outLabel, int exampleNum) {

@@ -25,11 +25,11 @@ import org.datavec.api.split.NumberedFileInputSplit;
 import org.datavec.api.util.ClassPathResource;
 import org.datavec.api.writable.Writable;
 import org.datavec.api.writable.WritableType;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
+import java.io.*;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,6 +39,9 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 
 public class CSVSequenceRecordReaderTest {
+
+    @Rule
+    public TemporaryFolder tempDir = new TemporaryFolder();
 
     @Test
     public void test() throws Exception {
@@ -135,7 +138,48 @@ public class CSVSequenceRecordReaderTest {
         }
     }
 
-    private static class TestInputSplit implements InputSplit {
+    private static class
+    TestInputSplit implements InputSplit {
+
+        @Override
+        public boolean canWriteToLocation(URI location) {
+            return false;
+        }
+
+        @Override
+        public String addNewLocation() {
+            return null;
+        }
+
+        @Override
+        public String addNewLocation(String location) {
+            return null;
+        }
+
+        @Override
+        public void updateSplitLocations(boolean reset) {
+
+        }
+
+        @Override
+        public boolean needsBootstrapForWrite() {
+            return false;
+        }
+
+        @Override
+        public void bootStrapForWrite() {
+
+        }
+
+        @Override
+        public OutputStream openOutputStreamFor(String location) throws Exception {
+            return null;
+        }
+
+        @Override
+        public InputStream openInputStreamFor(String location) throws Exception {
+            return null;
+        }
 
         @Override
         public long length() {
@@ -180,58 +224,23 @@ public class CSVSequenceRecordReaderTest {
             return true;
         }
 
-        @Override
-        public void write(DataOutput out) throws IOException {
-            throw new UnsupportedOperationException();
-        }
 
-        @Override
-        public void readFields(DataInput in) throws IOException {
-            throw new UnsupportedOperationException();
-        }
 
-        @Override
-        public void writeType(DataOutput out) throws IOException {
-            throw new UnsupportedOperationException();
-        }
 
-        @Override
-        public double toDouble() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public float toFloat() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public int toInt() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public long toLong() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public WritableType getType() {
-            throw new UnsupportedOperationException();
-        }
     }
 
 
     @Test
     public void testCsvSeqAndNumberedFileSplit() throws Exception {
+        File baseDir = tempDir.newFolder();
         //Simple sanity check unit test
         for (int i = 0; i < 3; i++) {
-            new org.nd4j.linalg.io.ClassPathResource(String.format("csvsequence_%d.txt", i)).getTempFileFromArchive();
+            new org.nd4j.linalg.io.ClassPathResource(String.format("csvsequence_%d.txt", i)).getTempFileFromArchive(baseDir);
         }
 
         //Load time series from CSV sequence files; compare to SequenceRecordReaderDataSetIterator
         org.nd4j.linalg.io.ClassPathResource resource = new org.nd4j.linalg.io.ClassPathResource("csvsequence_0.txt");
-        String featuresPath = resource.getTempFileFromArchive().getAbsolutePath().replaceAll("0", "%d");
+        String featuresPath = new File(baseDir, "csvsequence_%d.txt").getAbsolutePath();
 
         SequenceRecordReader featureReader = new CSVSequenceRecordReader(1, ",");
         featureReader.initialize(new NumberedFileInputSplit(featuresPath, 0, 2));

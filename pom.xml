@@ -35,6 +35,7 @@
         <module>datavec-spark-inference-parent</module>
         <module>datavec-jdbc</module>
         <module>datavec-excel</module>
+        <module>datavec-arrow</module>
     </modules>
     <name>DataVec</name>
 
@@ -56,6 +57,7 @@
     </developers>
 
     <properties>
+        <protonpack.version>1.15</protonpack.version>
         <poi.version>3.17</poi.version>
         <jcommander.version>1.27</jcommander.version>
         <play.version>2.4.6</play.version>
@@ -70,19 +72,19 @@
         <commons-io.version>2.4</commons-io.version>
         <commons-codec.version>1.10</commons-codec.version>
         <args4j.version>2.0.29</args4j.version>
-        <lombok.version>1.16.10</lombok.version>
+        <lombok.version>1.16.20</lombok.version>
         <jodatime.version>2.9.2</jodatime.version>
         <freemarker.version>2.3.23</freemarker.version>
         <logback.version>1.1.2</logback.version>
         <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
         <reflections.version>0.9.10</reflections.version>
-        <opencv.version>3.4.0</opencv.version>
-        <ffmpeg.version>3.4.1</ffmpeg.version>
-        <leptonica.version>1.74.4</leptonica.version>
+        <opencv.version>3.4.1</opencv.version>
+        <ffmpeg.version>3.4.2</ffmpeg.version>
+        <leptonica.version>1.75.3</leptonica.version>
         <hdf5.version>1.10.1</hdf5.version>
-        <javacpp-presets.version>1.4</javacpp-presets.version>
-        <javacpp.version>1.4.1-SNAPSHOT</javacpp.version>
-        <javacv.version>1.4</javacv.version>
+        <javacpp-presets.version>1.4.1</javacpp-presets.version>
+        <javacpp.version>1.4.1</javacpp.version>
+        <javacv.version>1.4.1</javacv.version>
         <geoip2.version>2.8.1</geoip2.version>
         <stream.analytics.version>2.7.0</stream.analytics.version>
         <tablesaw.version>0.11.4</tablesaw.version>
@@ -102,6 +104,7 @@
         <opencsv.version>2.3</opencsv.version>
         <tdigest.version>3.2</tdigest.version>
         <jtransforms.version>3.1</jtransforms.version>
+        <eclipse.collections.version>9.1.0</eclipse.collections.version>
     </properties>
 
     <repositories>
@@ -695,6 +698,12 @@
         <version>${junit.version}</version>
         <scope>test</scope>
       </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
 
