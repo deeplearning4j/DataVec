@@ -112,6 +112,19 @@ public class NativeImageLoader extends BaseImageLoader {
         this(height, width, channels);
         this.imageTransform = imageTransform;
     }
+    
+    /**
+     * Instantiate an image with the given
+     * height and width
+     * @param height the height to load
+     * @param width  the width to load
+     * @param channels the number of channels for the image*
+     * @param mode how to load multipage image
+     */
+    public NativeImageLoader(int height, int width, int channels, MultiPageMode mode) {
+        this(height, width, channels);
+        this.multiPageMode = mode;
+    }
 
     protected NativeImageLoader(NativeImageLoader other) {
         this.height = other.height;
@@ -119,6 +132,7 @@ public class NativeImageLoader extends BaseImageLoader {
         this.channels = other.channels;
         this.centerCropIfNeeded = other.centerCropIfNeeded;
         this.imageTransform = other.imageTransform;
+        this.multiPageMode = other.multiPageMode;
     }
 
     @Override
@@ -208,8 +222,10 @@ public class NativeImageLoader extends BaseImageLoader {
     @Override
     public INDArray asMatrix(InputStream is) throws IOException {
         byte[] bytes = IOUtils.toByteArray(is);
-        INDArray a = asMatrix(bytes);
-        if (a == null){
+        INDArray a;
+        if (this.multiPageMode != null) {
+             a = asMatrix(bytes);
+        }else{
             Mat image = imdecode(new Mat(bytes), CV_LOAD_IMAGE_ANYDEPTH | CV_LOAD_IMAGE_ANYCOLOR);
             if (image == null || image.empty()) {
                 PIX pix = pixReadMem(bytes, bytes.length);
@@ -699,22 +715,45 @@ public class NativeImageLoader extends BaseImageLoader {
     private INDArray asMatrix(byte[] bytes) throws IOException {
         PIXA pixa;
         pixa = pixaReadMemMultipageTiff(bytes, bytes.length);
-        if (pixa.n() == 0){
-            return null;
-        }
-        INDArray data = Nd4j.create(1, pixa.n(), pixa.pix(0).h(), pixa.pix(0).w());
+        INDArray data;
         INDArray currentD;
+        INDArrayIndex[] index = null;
+        switch (this.multiPageMode) {
+            case MINIBATCH:
+                data = Nd4j.create(pixa.n(), 1, pixa.pix(0).h(), pixa.pix(0).w());
+                break;
+            case CHANNELS:
+                data = Nd4j.create(1, pixa.n(), pixa.pix(0).h(), pixa.pix(0).w());
+                break;
+            default:
+                data = Nd4j.create(1, 1, pixa.pix(0).h(), pixa.pix(0).w());
+                PIX pix = pixa.pix(0);
+                currentD = asMatrix(convert(pix));
+                pixDestroy(pix);
+                index = new INDArrayIndex[]{NDArrayIndex.point(0), NDArrayIndex.point(0),NDArrayIndex.all(),NDArrayIndex.all()};
+                data.put(index , currentD.get(NDArrayIndex.all(), NDArrayIndex.all(),NDArrayIndex.all()));
+                return data;
+        }
         for (int i = 0; i < pixa.n(); i++) {
             PIX pix = pixa.pix(i);
             currentD = asMatrix(convert(pix));
             pixDestroy(pix);
             //TODO to change when 16-bit image is supported
-            data.put(
-                  new INDArrayIndex[]{NDArrayIndex.all(), NDArrayIndex.point(i),NDArrayIndex.all(),NDArrayIndex.all()},
-                  currentD.get(NDArrayIndex.all(), NDArrayIndex.all(),NDArrayIndex.all())
-            );
+            switch (this.multiPageMode) {
+                case MINIBATCH:
+                    index = new INDArrayIndex[]{NDArrayIndex.point(i), NDArrayIndex.all(),NDArrayIndex.all(),NDArrayIndex.all()};
+                    break;
+                case CHANNELS:
+                    index = new INDArrayIndex[]{NDArrayIndex.all(), NDArrayIndex.point(i),NDArrayIndex.all(),NDArrayIndex.all()};
+                    break;
+            }
+            data.put(index , currentD.get(NDArrayIndex.all(), NDArrayIndex.all(),NDArrayIndex.all()));
         }
 
         return data;
     }
+    public enum MultiPageMode{
+        MINIBATCH, CHANNELS, FIRST
+    }
+    
 }
