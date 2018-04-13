@@ -240,9 +240,9 @@ public class TestImageRecordReader {
         ImageRecordReader rr = new ImageRecordReader(32, 32, 3, labelMaker);
         File parent = new ClassPathResource("/testimages/class0").getFile();
         int numFiles = parent.list().length;
-		rr.initialize(new FileSplit(parent));
+        rr.initialize(new FileSplit(parent));
         CountingListener counting = new CountingListener(new LogRecordListener());
-		rr.setListeners(counting);
+        rr.setListeners(counting);
         rr.next(numFiles + 1);
         assertEquals(numFiles, counting.getCount());
     }
@@ -253,12 +253,12 @@ public class TestImageRecordReader {
         ImageRecordReader rr = new ImageRecordReader(32, 32, 3, labelMaker);
         File parent = new ClassPathResource("/testimages/class0").getFile();
         int numFiles = parent.list().length;
-		rr.initialize(new FileSplit(parent));
+        rr.initialize(new FileSplit(parent));
         CountingListener counting = new CountingListener(new LogRecordListener());
-		rr.setListeners(counting);
-		while(rr.hasNext()) {
-			rr.next();
-		}
+        rr.setListeners(counting);
+        while(rr.hasNext()) {
+            rr.next();
+        }
         assertEquals(numFiles, counting.getCount());
     }
 
