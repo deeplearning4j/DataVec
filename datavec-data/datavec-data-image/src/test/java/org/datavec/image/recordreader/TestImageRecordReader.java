@@ -419,38 +419,38 @@ public class TestImageRecordReader {
 
     private static class CountingListener implements RecordListener {
 
-    	private RecordListener listener;
-    	private int count = 0;
+        private RecordListener listener;
+        private int count = 0;
 
-    	public CountingListener(RecordListener listener) {
-			this.listener = listener;
-		}
+        public CountingListener(RecordListener listener) {
+            this.listener = listener;
+        }
 
-		@Override
-		public boolean invoked() {
-			return this.listener.invoked();
-		}
+        @Override
+        public boolean invoked() {
+            return this.listener.invoked();
+        }
 
-		@Override
-		public void invoke() {
-			this.listener.invoke();
-		}
+        @Override
+        public void invoke() {
+            this.listener.invoke();
+        }
 
-		@Override
-		public void recordRead(RecordReader reader, Object record) {
-			this.listener.recordRead(reader, record);
-			this.count++;
-		}
+        @Override
+        public void recordRead(RecordReader reader, Object record) {
+            this.listener.recordRead(reader, record);
+            this.count++;
+        }
 
-		@Override
-		public void recordWrite(RecordWriter writer, Object record) {
-			this.listener.recordWrite(writer, record);
-			this.count++;
-		}
+        @Override
+        public void recordWrite(RecordWriter writer, Object record) {
+            this.listener.recordWrite(writer, record);
+            this.count++;
+        }
 
-		public int getCount() {
-			return count;
-		}
+        public int getCount() {
+            return count;
+        }
     }
 }
 
