@@ -6,6 +6,7 @@ import org.datavec.api.conf.Configuration;
 import org.datavec.api.records.reader.RecordReader;
 import org.datavec.api.records.writer.RecordWriter;
 import org.datavec.api.split.InputSplit;
+import org.datavec.api.split.partition.NumberOfRecordsPartitioner;
 import org.datavec.api.split.partition.Partitioner;
 import org.datavec.api.writable.Writable;
 
@@ -21,7 +22,7 @@ import java.util.List;
  * Specify a {@link RecordWriter} as the destination.
  *
  * When setting up the locations, use 2 different {@link InputSplit}
- * calling {@link RecordWriter#initialize(InputSplit, Partitioner)}
+ * callling {@link RecordWriter#initialize(InputSplit, Partitioner)}
  * and {@link RecordReader#initialize(InputSplit)}
  * respectively to configure the locations of where the data will be
  * read from and written to.
@@ -32,6 +33,15 @@ import java.util.List;
  *
  * Finally, you may specify a batch size for batch read and write if the record reader and writer support it.
  *
+ * Of note, is you can also specify multiple readers.
+ * In which case, it will read from every stream jointly and write out the specified
+ * writer accordingly.
+ *
+ * {@link #copy()} will work the same with the following exceptions, you must specify
+ * {@link #splitPerReader} (one split per reader)
+ * {@link #readersToConcat} and the readers which will be read from
+ * writing to the same record writer.
+ *
  * See {@link #copy()} for more information here.
  */
 @Builder
@@ -40,11 +50,24 @@ public class RecordMapper {
     private RecordReader recordReader;
     private RecordWriter recordWriter;
     private InputSplit inputUrl;
+    private InputSplit[] splitPerReader;
+    private RecordReader[] readersToConcat;
+
     private InputSplit outputUrl;
     @Builder.Default
+    private boolean callInitRecordReader = true;
+    @Builder.Default
+    private boolean callInitRecordWriter = true;
+    @Builder.Default
+    private boolean callInitPartitioner = true;
+    @Builder.Default
     private Configuration configuration = new Configuration();
+
+    private Configuration[] configurationsPerReader;
+
     @Getter
-    private Partitioner partitioner;
+    @Builder.Default
+    private Partitioner partitioner = new NumberOfRecordsPartitioner();
     private int batchSize;
 
     /**
@@ -58,16 +81,66 @@ public class RecordMapper {
      * @throws Exception
      */
     public void copy() throws Exception {
-        recordReader.initialize(configuration,inputUrl);
-        partitioner.init(configuration,outputUrl);
-        recordWriter.initialize(configuration,outputUrl,partitioner);
+        if(callInitRecordReader) {
+            if(recordReader != null) {
+                recordReader.initialize(configuration, inputUrl);
+            }
+            else {
+                if(readersToConcat == null || splitPerReader == null)  {
+                    throw new IllegalArgumentException("No readers or input  splits found.");
+                }
+
+                if(readersToConcat.length != splitPerReader.length) {
+                    throw new IllegalArgumentException("One input split must be specified per record reader");
+                }
+
+                for(int i = 0; i < readersToConcat.length; i++) {
+                    if(readersToConcat[i] == null) {
+                        throw new IllegalStateException("Reader at record " + i + " was null!");
+                    }
+                    if(splitPerReader[i] == null) {
+                        throw new IllegalStateException("Split at " + i + " is null!");
+                    }
+                    //allow for, but do not enforce configurations per reader.
+                    if(configurationsPerReader != null) {
+                        readersToConcat[i].initialize(configurationsPerReader[i], splitPerReader[i]);
+                    }
+                    else {
+                        readersToConcat[i].initialize(configuration,splitPerReader[i]);
+                    }
+                }
+            }
+        }
+
+        if(callInitPartitioner) {
+            partitioner.init(configuration, outputUrl);
+        }
+
+        if(callInitRecordWriter) {
+            recordWriter.initialize(configuration, outputUrl, partitioner);
+        }
+
+        if(recordReader != null) {
+            write(recordReader,true);
+        }
+        else if(readersToConcat != null) {
+            for(RecordReader recordReader : readersToConcat) {
+                write(recordReader,false);
+            }
+
+            //close since we can't do it within the method
+            recordWriter.close();
+        }
+
+    }
 
 
+    private void write(RecordReader recordReader,boolean closeWriter) throws Exception {
         if(batchSize > 0 && recordReader.batchesSupported() && recordWriter.supportsBatch()) {
-            while(recordReader.hasNext()) {
+            while (recordReader.hasNext()) {
                 List<List<Writable>> next = recordReader.next(batchSize);
                 //ensure we can write a file for either the current or next iterations
-                if(partitioner.needsNewPartition()) {
+                if (partitioner.needsNewPartition()) {
                     partitioner.currentOutputStream().flush();
                     partitioner.currentOutputStream().close();
                     partitioner.openNewStream();
@@ -78,9 +151,11 @@ public class RecordMapper {
             }
 
             partitioner.currentOutputStream().flush();
-            partitioner.currentOutputStream().close();
             recordReader.close();
-            recordWriter.close();
+            if (closeWriter) {
+                partitioner.currentOutputStream().close();
+                recordWriter.close();
+            }
         }
 
         else {
@@ -93,8 +168,5 @@ public class RecordMapper {
                 }
             }
         }
-
     }
-
-
 }
