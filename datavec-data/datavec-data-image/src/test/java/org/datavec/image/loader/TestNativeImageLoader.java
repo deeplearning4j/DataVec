@@ -115,7 +115,7 @@ public class TestNativeImageLoader {
         assertEquals(w4, array6.size(3));
 
         int ch5 = 4, pages1 = 1;
-        NativeImageLoader loader6 = new NativeImageLoader(h4, w4, 1, NativeImageLoader.MultiPageMode.CHANNELS);
+        NativeImageLoader loader6 = new NativeImageLoader(h4, w4, ch5, NativeImageLoader.MultiPageMode.CHANNELS);
         INDArray array7 = null;
         try {
             array7 = loader6.asMatrix(
