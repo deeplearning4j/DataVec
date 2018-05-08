@@ -62,13 +62,13 @@
         <jcommander.version>1.27</jcommander.version>
         <play.version>2.4.6</play.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <slf4j.version>1.7.7</slf4j.version>
+        <slf4j.version>1.7.12</slf4j.version>
         <nd4j.version>1.0.0-SNAPSHOT</nd4j.version>
         <junit.version>4.12</junit.version>
         <jackson.version>2.8.7</jackson.version>    <!-- To match spark and geoip2 -->
-        <commons-compress.version>1.8.1</commons-compress.version>
-        <commons-lang3.version>3.3.1</commons-lang3.version>
-        <commons-math3.version>3.3</commons-math3.version>
+        <commons-compress.version>1.16.1</commons-compress.version>
+        <commons-lang3.version>3.4</commons-lang3.version>
+        <commons-math3.version>3.4.1</commons-math3.version>
         <commons-io.version>2.4</commons-io.version>
         <commons-codec.version>1.10</commons-codec.version>
         <args4j.version>2.0.29</args4j.version>
@@ -77,7 +77,6 @@
         <freemarker.version>2.3.23</freemarker.version>
         <logback.version>1.1.2</logback.version>
         <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
-        <reflections.version>0.9.10</reflections.version>
         <opencv.version>3.4.1</opencv.version>
         <ffmpeg.version>3.4.2</ffmpeg.version>
         <leptonica.version>1.75.3</leptonica.version>
@@ -104,7 +103,7 @@
         <opencsv.version>2.3</opencsv.version>
         <tdigest.version>3.2</tdigest.version>
         <jtransforms.version>3.1</jtransforms.version>
-        <eclipse.collections.version>9.1.0</eclipse.collections.version>
+        <fastutil.version>6.5.7</fastutil.version>
     </properties>
 
     <repositories>
