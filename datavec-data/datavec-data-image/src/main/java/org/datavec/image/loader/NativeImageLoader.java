@@ -54,6 +54,10 @@ public class NativeImageLoader extends BaseImageLoader {
                     "png", "tif", "tiff", "exr", "webp", "BMP", "GIF", "JPG", "JPEG", "JP2", "PBM", "PGM", "PPM", "PNM",
                     "PNG", "TIF", "TIFF", "EXR", "WEBP"};
 
+    public enum MultiPageMode{
+        MINIBATCH, CHANNELS, FIRST
+    }
+
     protected OpenCVFrameConverter.ToMat converter = new OpenCVFrameConverter.ToMat();
 
     /**
@@ -773,7 +777,7 @@ public class NativeImageLoader extends BaseImageLoader {
             case CHANNELS:
                 data = Nd4j.create(1, pixa.n(), pixa.pix(0).h(), pixa.pix(0).w());
                 break;
-            default:
+            case FIRST:
                 data = Nd4j.create(1, 1, pixa.pix(0).h(), pixa.pix(0).w());
                 PIX pix = pixa.pix(0);
                 currentD = asMatrix(convert(pix));
@@ -781,6 +785,7 @@ public class NativeImageLoader extends BaseImageLoader {
                 index = new INDArrayIndex[]{NDArrayIndex.point(0), NDArrayIndex.point(0),NDArrayIndex.all(),NDArrayIndex.all()};
                 data.put(index , currentD.get(NDArrayIndex.all(), NDArrayIndex.all(),NDArrayIndex.all()));
                 return data;
+            default: throw new UnsupportedOperationException("Unsupported MultiPageMode: " + multiPageMode);
         }
         for (int i = 0; i < pixa.n(); i++) {
             PIX pix = pixa.pix(i);
@@ -794,14 +799,12 @@ public class NativeImageLoader extends BaseImageLoader {
                 case CHANNELS:
                     index = new INDArrayIndex[]{NDArrayIndex.all(), NDArrayIndex.point(i),NDArrayIndex.all(),NDArrayIndex.all()};
                     break;
+                default: throw new UnsupportedOperationException("Unsupported MultiPageMode: " + multiPageMode);
             }
             data.put(index , currentD.get(NDArrayIndex.all(), NDArrayIndex.all(),NDArrayIndex.all()));
         }
 
         return data;
-    }
-    public enum MultiPageMode{
-        MINIBATCH, CHANNELS, FIRST
     }
     
 }
