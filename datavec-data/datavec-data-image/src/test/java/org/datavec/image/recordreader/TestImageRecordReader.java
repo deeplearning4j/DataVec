@@ -234,7 +234,7 @@ public class TestImageRecordReader {
         assertEquals(l2.get(), act2);
     }
 
-    @Ignore
+    @Test
     public void testListenerInvocationBatch() throws IOException {
         ParentPathLabelGenerator labelMaker = new ParentPathLabelGenerator();
         ImageRecordReader rr = new ImageRecordReader(32, 32, 3, labelMaker);
