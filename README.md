@@ -1,3 +1,8 @@
+# IMPORTANT: THIS REPOSITORY HAS BEEN ARCHIVED AND DATAVEC HAS BEEN MOVED
+DataVec has been migrated to a sub-module of the mono-repository here: https://github.com/deeplearning4j/deeplearning4j
+All future development will continue at that repository, which should be used for all issues and pull requests.
+
+
 # DataVec
 
 [![Join the chat at https://gitter.im/deeplearning4j/deeplearning4j](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/deeplearning4j/deeplearning4j?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
